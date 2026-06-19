@@ -98,10 +98,17 @@ export class Enemy {
     this._gunTip = new THREE.Object3D();
     this._gunTip.position.set(0, 0, 0.62);
     rifle.add(this._gunTip);
-    rifle.position.set(0.16, 1.34, 0.34); // initial; re-placed at the hand each frame
-    this.group.add(rifle);
     this._rifle = rifle;
-    this._handWP = new THREE.Vector3();
+
+    // parent to the right-hand bone so the soldier's own animation holds the rifle naturally.
+    // (hand bone lives in a ~0.01 scaled space, so the rifle is scaled back up ~100x.)
+    if (this.bones.rHand) {
+      this._gunFix = { p: [3.5, 4, 11.5], r: [-0.55, 0.1, 0], s: 102 };
+      this.bones.rHand.add(rifle);
+      this._applyGun();
+    } else {
+      rifle.position.set(0.16, 1.34, 0.34); this.group.add(rifle);
+    }
 
 
     // invisible but raycastable hitbox
@@ -145,30 +152,13 @@ export class Enemy {
     return !this.level.segmentBlocked(this.pos.x, this.pos.z, playerPos.x, playerPos.z);
   }
 
-  // sit the rifle in the right hand each frame (so it follows duck/jump/pose),
-  // barrel along the group's +Z so it points at whatever the soldier faces (the player)
-  _placeRifle() {
-    const hand = this.bones.lHand || this.bones.rHand;
-    if (!this._rifle || !hand) return;
-    hand.updateWorldMatrix(true, false);
-    hand.getWorldPosition(this._handWP);
-    this.group.worldToLocal(this._handWP);
-    // held at the left hand, tucked close to the body ("Die Hard" carry), still aimed at the player
-    this._rifle.position.set(this._handWP.x + 0.02, this._handWP.y + 0.06, this._handWP.z + 0.06);
-    this._rifle.rotation.set(this._aimPitch || 0, 0, 0);
-  }
-
-  // force the arms into a rifle-hold pose (the soldier clips have no aiming animation)
-  _poseArms() {
-    const b = this.bones; if (!b.rArm) return;
-    const P = (typeof window !== "undefined" && window.__armPose) || {
-      rArm: [0.95, 0.15, -0.15], rFore: [0.1, -0.55, -1.15],
-      lArm: [0.85, -0.3, 0.35], lFore: [0.1, 0.55, 1.25],
-    };
-    b.rArm.rotation.set(P.rArm[0], P.rArm[1], P.rArm[2]);
-    if (b.rFore) b.rFore.rotation.set(P.rFore[0], P.rFore[1], P.rFore[2]);
-    b.lArm.rotation.set(P.lArm[0], P.lArm[1], P.lArm[2]);
-    if (b.lFore) b.lFore.rotation.set(P.lFore[0], P.lFore[1], P.lFore[2]);
+  // set the rifle's transform within the hand bone (tunable live via window.__gunFix)
+  _applyGun() {
+    if (!this._rifle || this._rifle.parent === this.group) return;
+    const f = (typeof window !== "undefined" && window.__gunFix) || this._gunFix;
+    this._rifle.position.set(f.p[0], f.p[1], f.p[2]);
+    this._rifle.rotation.set(f.r[0], f.r[1], f.r[2]);
+    this._rifle.scale.setScalar(f.s);
   }
 
   _blocked(x, z) {
@@ -204,8 +194,7 @@ export class Enemy {
     this._aimPitch = Math.max(-1.2, Math.min(1.2, Math.atan2((this.baseY + 1.3) - playerPos.y, Math.max(0.6, dxz))));
 
     this.mixer.update(dt);
-    this._poseArms();   // override the idle/walk arm motion with a rifle hold
-    this._placeRifle(); // keep the rifle in the hand, aimed where the soldier faces
+    this._applyGun(); // rifle rides the hand bone via the natural animation
 
     const see = this.canSee(playerPos);
     if (see) this.alertT = 5; else this.alertT -= dt;
