@@ -271,8 +271,8 @@ export class Enemy {
     if (engaged && !this.dodging) {
       this.dodgeCd -= dt;
       if (this.dodgeCd <= 0) {
-        this.dodging = Math.random() < 0.5 ? "jump" : "duck";
-        this.dodgeDur = this.dodging === "jump" ? 0.55 : 0.6;
+        this.dodging = "jump"; // crouch removed — only the jump dodge
+        this.dodgeDur = 0.55;
         this.dodgeT = this.dodgeDur;
         this.dodgeCd = 2 + Math.random() * 2.5;
       }
@@ -280,19 +280,7 @@ export class Enemy {
     if (this.dodging) {
       this.dodgeT -= dt;
       const s = Math.sin((1 - Math.max(0, this.dodgeT) / this.dodgeDur) * Math.PI);
-      if (this.dodging === "jump") {
-        this.group.position.y = this.baseY + s * 0.7; // hop up
-      } else {
-        // duck = real crouch: bend knees (thighs forward, shins back) + drop the hips/butt + hunch
-        const b = this.bones;
-        if (b.lUpLeg) b.lUpLeg.rotation.x += s * 0.7;
-        if (b.rUpLeg) b.rUpLeg.rotation.x += s * 0.7;
-        if (b.lLeg) b.lLeg.rotation.x -= s * 0.9;
-        if (b.rLeg) b.rLeg.rotation.x -= s * 0.9;
-        if (b.spine) b.spine.rotation.x += s * 0.5;
-        if (b.spine1) b.spine1.rotation.x += s * 0.3;
-        this.group.position.y = this.baseY - s * 0.35; // hips/butt drop
-      }
+      this.group.position.y = this.baseY + s * 0.7; // hop up (jump dodge only)
       if (this.dodgeT <= 0) { this.dodging = null; this.group.position.y = this.baseY; }
     }
   }
