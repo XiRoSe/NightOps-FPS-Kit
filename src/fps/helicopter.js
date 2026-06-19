@@ -167,20 +167,36 @@ export class Helicopter {
     if (this.dead) {
       if (this.headBeam) this.headBeam.visible = false;
       if (this.headLight) this.headLight.intensity = 0;
-      if (this._needExplode) {
+      if (this._needExplode) { // initial mid-air boom
         this._needExplode = false;
         this.group.getWorldPosition(this._tmp);
-        const p = this._tmp;
-        // one massive blast: several overlapping fireballs for a huge ball of fire
-        ctx.vfx.explosion(p);
-        ctx.vfx.explosion(p.clone().add(new THREE.Vector3(2.5, 1.5, 0)));
-        ctx.vfx.explosion(p.clone().add(new THREE.Vector3(-2.5, 0.5, 1.5)));
-        ctx.vfx.explosion(p.clone().add(new THREE.Vector3(0, 2.5, -2)));
+        ctx.vfx.explosion(this._tmp);
         ctx.audio?.explosion?.();
         ctx.audio?.stopRotor?.();
-        this.group.visible = false; // gunship disappears immediately
       }
-      this.removable = true;        // remove the wreck right away
+      this.deathT += dt;
+      // tumble + accelerating fall
+      this.pos.y -= dt * (6 + this.deathT * 5);
+      this.pos.x += dt * 1.2;
+      this.group.position.copy(this.pos);
+      this.group.rotation.z += dt * 1.8;
+      this.group.rotation.x += dt * 1.0;
+      // smoke/fire trail while falling
+      this._smokeT -= dt;
+      if (this._smokeT <= 0) { this._smokeT = 0.05; this.group.getWorldPosition(this._tmp); ctx.vfx.impact(this._tmp); }
+      // ground impact -> huge fireball, then vanish
+      if (this.pos.y <= 1.4 && !this._impacted) {
+        this._impacted = true;
+        this.group.getWorldPosition(this._tmp);
+        const p = this._tmp;
+        ctx.vfx.explosion(p);
+        ctx.vfx.explosion(p.clone().add(new THREE.Vector3(3, 1.5, 0)));
+        ctx.vfx.explosion(p.clone().add(new THREE.Vector3(-3, 0.5, 2)));
+        ctx.vfx.explosion(p.clone().add(new THREE.Vector3(0, 2.5, -2.5)));
+        ctx.audio?.explosion?.();
+        this.group.visible = false; // disappear after the ground blast
+        this.removable = true;
+      }
       return;
     }
 

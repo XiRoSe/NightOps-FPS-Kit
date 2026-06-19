@@ -132,21 +132,24 @@ export class Audio {
   }
   startRotor() {
     if (this._rotor || !this.ctx) return;
-    // continuous turbine whine under the blade chop
+    // low engine rumble: quiet, low, lowpassed (a thrum — not a buzz)
     this._turbine = this.ctx.createOscillator();
     this._turbineG = this.ctx.createGain();
-    this._turbine.type = "sawtooth"; this._turbine.frequency.value = 300;
+    const lp = this.ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 130; lp.Q.value = 0.6;
+    this._turbine.type = "sawtooth"; this._turbine.frequency.value = 60;
     this._turbineG.gain.value = 0.05;
-    this._turbine.connect(this._turbineG); this._turbineG.connect(this.master);
+    this._turbine.connect(lp); lp.connect(this._turbineG); this._turbineG.connect(this.master);
     this._turbine.start();
-    // punchy rotor blade chop (~12/sec)
-    const chop = () => { this._tone(46, 0.08, "square", 0.2); this._noiseBurst(0.06, 170, 1.2, 0.13); };
+    this._turbineLP = lp;
+    // rotor blade chop: a soft low "whomp" ~11/sec (lowpassed noise, no tonal buzz)
+    const chop = () => this._noiseBurst(0.09, 120, 0.6, 0.32, "lowpass");
     chop();
-    this._rotor = setInterval(chop, 80);
+    this._rotor = setInterval(chop, 92);
   }
   stopRotor() {
     if (this._rotor) { clearInterval(this._rotor); this._rotor = null; }
     if (this._turbine) { try { this._turbine.stop(); } catch (e) { /* already stopped */ } this._turbine.disconnect(); this._turbine = null; }
+    if (this._turbineLP) { this._turbineLP.disconnect(); this._turbineLP = null; }
   }
   win() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this._tone(f, 0.18, "square", 0.22), i * 130)); }
   lose() { [330, 262, 196, 131].forEach((f, i) => setTimeout(() => this._tone(f, 0.25, "sawtooth", 0.22), i * 160)); }
