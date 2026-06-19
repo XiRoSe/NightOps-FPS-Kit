@@ -219,34 +219,40 @@ export class Level {
     light.target.position.copy(tgt);
     light.castShadow = false;
     this.scene.add(light, light.target);
-    // visible volumetric beam cone (apex at lamp, widening to the ground)
+    // visible beam — a UNIT cone (apex at lamp); length is clipped to the first wall each frame
     const cone = new THREE.Mesh(
-      new THREE.ConeGeometry(Math.tan(angle) * len * 0.85, len, 18, 1, true),
+      new THREE.ConeGeometry(1, 1, 18, 1, true),
       new THREE.MeshBasicMaterial({ color: 0xfff2cc, transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })
     );
-    cone.position.copy(fix).addScaledVector(dir.clone().normalize(), len / 2);
-    cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize().negate());
+    cone.frustumCulled = false;
     this.scene.add(cone);
-    this.spots.push({ light, cone, fix, baseDir: dir.clone().normalize(), len, sweep, phase: this.spots.length * 1.3 });
+    this.spots.push({ light, cone, fix, baseDir: dir.clone().normalize(), maxLen: len, angle, sweep, phase: this.spots.length * 1.3 });
   }
 
-  // slow prison/base searchlight swing for the tower lights
-  _sweepSpots(t) {
+  // aim the spotlights (tower ones sweep) and CLIP each visible beam at the first wall it hits
+  _updateSpots(t) {
     const up = this._upY || (this._upY = new THREE.Vector3(0, 1, 0));
+    const ray = this._spotRay || (this._spotRay = new THREE.Raycaster());
+    const tmp = this._spotDir || (this._spotDir = new THREE.Vector3());
     for (const s of this.spots) {
-      if (!s.sweep) continue;
-      const ang = Math.sin(t * 0.5 + s.phase) * 0.7; // ±0.7 rad swing
-      const dir = s.baseDir.clone().applyAxisAngle(up, ang);
-      s.light.target.position.copy(s.fix).addScaledVector(dir, s.len);
+      tmp.copy(s.baseDir);
+      if (s.sweep) tmp.applyAxisAngle(up, Math.sin(t * 0.5 + s.phase) * 0.7); // ±0.7 rad swing
+      s.light.target.position.copy(s.fix).addScaledVector(tmp, s.maxLen);
       s.light.target.updateMatrixWorld();
-      s.cone.position.copy(s.fix).addScaledVector(dir, s.len / 2);
-      s.cone.quaternion.setFromUnitVectors(up, dir.clone().negate());
+      // clip the volumetric cone to the nearest solid surface so it doesn't pass through walls
+      ray.set(s.fix, tmp); ray.far = s.maxLen;
+      const hit = ray.intersectObjects(this.solidMeshes, true)[0];
+      const len = hit ? hit.distance : s.maxLen;
+      const r = Math.tan(s.angle) * len * 0.9;
+      s.cone.position.copy(s.fix).addScaledVector(tmp, len / 2);
+      s.cone.quaternion.setFromUnitVectors(up, tmp.clone().negate());
+      s.cone.scale.set(r, len, r);
     }
   }
 
   // wave the objective flag + swing the tower searchlights
   update(t) {
-    this._sweepSpots(t);
+    this._updateSpots(t);
     if (!this.flag) return;
     const cloth = this.flag.userData.cloth;
     const base = this.flag.userData.base;
@@ -289,15 +295,28 @@ export class Level {
   _bunker(x, z) {
     const g = new THREE.Group();
     const w = 5, d = 4, h = 3;
-    // four walls with a front opening
+    // walls with a front opening + a window on the left and back walls
     const t = 0.4;
-    const back = box(w, h, t, COLORS.concreteDark, { flat: true }); back.position.set(0, h / 2, -d / 2);
-    const left = box(t, h, d, COLORS.concreteDark, { flat: true }); left.position.set(-w / 2, h / 2, 0);
-    const right = box(t, h, d, COLORS.concreteDark, { flat: true }); right.position.set(w / 2, h / 2, 0);
+    const con = (W, H, D) => box(W, H, D, COLORS.concreteDark, { flat: true });
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x2a3a44, metalness: 0.4, roughness: 0.25, transparent: true, opacity: 0.4 });
+    const Ww = 1.5, wy0 = 1.0, wy1 = 2.0, wMidY = (wy0 + wy1) / 2, wH = wy1 - wy0; // window opening
+
+    const back = con(w, h, t); back.position.set(0, h / 2, -d / 2);
     const roof = box(w + 0.4, t, d + 0.4, COLORS.metalDark, { flat: true }); roof.position.set(0, h, 0);
-    const frontL = box(w / 2 - 0.6, h, t, COLORS.concreteDark, { flat: true }); frontL.position.set(-(w / 4 + 0.3), h / 2, d / 2);
+    const frontL = con(w / 2 - 0.6, h, t); frontL.position.set(-(w / 4 + 0.3), h / 2, d / 2);
     const frontR = frontL.clone(); frontR.position.x = w / 4 + 0.3;
-    g.add(back, left, right, roof, frontL, frontR);
+    g.add(back, roof, frontL, frontR);
+
+    // windows on the two OPPOSITE side walls (left -X and right +X), each opening faces ±X
+    for (const sx of [-w / 2, w / 2]) {
+      const jw = (d - Ww) / 2;
+      const sill = con(t, wy0, d); sill.position.set(sx, wy0 / 2, 0);
+      const head = con(t, h - wy1, d); head.position.set(sx, (h + wy1) / 2, 0);
+      const jf = con(t, wH, jw); jf.position.set(sx, wMidY, Ww / 2 + jw / 2);
+      const jb = con(t, wH, jw); jb.position.set(sx, wMidY, -(Ww / 2 + jw / 2));
+      const pane = new THREE.Mesh(new THREE.BoxGeometry(0.08, wH, Ww), glassMat); pane.position.set(sx, wMidY, 0);
+      g.add(sill, head, jf, jb, pane);
+    }
     g.position.set(x, 0, z);
     this.scene.add(g);
     this.solidMeshes.push(g);
