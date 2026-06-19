@@ -42,7 +42,7 @@ class Game {
     this._laserDir = new THREE.Vector3();
     this._laserHit = new THREE.Vector3();
     this._laserOrigin = new THREE.Vector3();
-    this._laserQ = new THREE.Quaternion();
+    this._laserBack = new THREE.Vector3();
     this._laserTargets = [];
     this._laserUp = new THREE.Vector3(0, 1, 0);
     const beamGeo = new THREE.CylinderGeometry(0.018, 0.018, 1, 6, 1, true);
@@ -141,12 +141,10 @@ class Game {
 
   _updateLaser() {
     if (!this.combat) return;
-    // direction = the GUN BARREL's forward (its local -Z), so the laser is bolted to the gun
-    // and follows it through reload dips/tilts and sway — not the camera.
-    this.weapon.muzzle.getWorldQuaternion(this._laserQ);
-    const dir = this._laserDir.set(0, 0, -1).applyQuaternion(this._laserQ).normalize();
-    const origin = this._laserOrigin.copy(this.weapon.muzzleWorld);
-    this._laserRay.set(origin, dir);
+    // aim point = straight down the camera (crosshair); beam is drawn FROM the muzzle, so its
+    // origin rides the gun and the beam visibly tilts as the gun dips/sways during reload.
+    const dir = this._laserDir; this.camera.getWorldDirection(dir);
+    this._laserRay.set(this.camera.position, dir);
     this._laserRay.far = 90;
     const tg = this._laserTargets; tg.length = 0;
     for (const m of this.level.solidMeshes) tg.push(m);
@@ -154,7 +152,8 @@ class Game {
     if (this.heli && !this.heli.dead) tg.push(this.heli.hitbox);
     const hits = this._laserRay.intersectObjects(tg, true);
     if (hits.length) this._laserHit.copy(hits[0].point);
-    else this._laserHit.copy(origin).addScaledVector(dir, 80);
+    else this._laserHit.copy(this.camera.position).addScaledVector(dir, 80);
+    const origin = this._laserOrigin.copy(this.weapon.muzzleWorld);
     const len = origin.distanceTo(this._laserHit);
     const beamDir = this._laserHit.clone().sub(origin).normalize();
     this.laserBeam.position.copy(origin);

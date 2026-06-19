@@ -160,16 +160,23 @@ export class Enemy {
   }
 
   // set the rifle's transform within the hand bone (tunable live via window.__gunFix)
+  // raise the right arm so the hand+rifle come up to the shoulder (the natural "aiming" look)
+  _aimArm() {
+    const b = this.bones; if (!b.rArm) return;
+    b.rArm.rotation.set(1.35, 0.0, 0.2);
+    if (b.rFore) b.rFore.rotation.set(0.0, 0.0, -0.55);
+  }
+
   _applyGun(playerPos, aim) {
     if (!this._rifle || this._rifle.parent === this.group) return;
     const f = this._gunFix;
     this._rifle.position.set(f.p[0], f.p[1], f.p[2]);
     this._rifle.scale.setScalar(f.s);
     if (aim && playerPos) {
-      // point the barrel (+Z) at the player, kept upright — convert the world aim into hand-local space
+      // point the barrel (+Z) exactly at the player, upright — world aim converted to hand-local
       this._rifle.updateWorldMatrix(true, false);
       this._rifle.getWorldPosition(this._gpos);
-      this._m4.lookAt(this._gpos, playerPos, this._aimUp);            // +Z = away from player
+      this._m4.lookAt(this._gpos, playerPos, this._aimUp);            // +Z faces away from player
       this._wq.setFromRotationMatrix(this._m4).multiply(this._qFlipY); // flip so the barrel faces the player
       this.bones.rHand.getWorldQuaternion(this._hq);
       this._rifle.quaternion.copy(this._hq.invert().multiply(this._wq));
@@ -215,7 +222,8 @@ export class Enemy {
     const see = this.canSee(playerPos);
     if (see) this.alertT = 5; else this.alertT -= dt;
     const engaged = this.alertT > 0;
-    this._applyGun(playerPos, engaged); // aim the barrel at the player while engaged, else relaxed carry
+    if (engaged) this._aimArm();           // raise the right arm to the shoulder (aiming look)
+    this._applyGun(playerPos, engaged);    // gun in hand; when engaged the barrel tracks the player exactly
 
     // watchtower guard: never moves — just tracks the player and fires from the post
     if (this.baseY > 0) {

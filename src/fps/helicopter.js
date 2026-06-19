@@ -170,27 +170,17 @@ export class Helicopter {
       if (this._needExplode) {
         this._needExplode = false;
         this.group.getWorldPosition(this._tmp);
-        ctx.vfx.explosion(this._tmp);
+        const p = this._tmp;
+        // one massive blast: several overlapping fireballs for a huge ball of fire
+        ctx.vfx.explosion(p);
+        ctx.vfx.explosion(p.clone().add(new THREE.Vector3(2.5, 1.5, 0)));
+        ctx.vfx.explosion(p.clone().add(new THREE.Vector3(-2.5, 0.5, 1.5)));
+        ctx.vfx.explosion(p.clone().add(new THREE.Vector3(0, 2.5, -2)));
         ctx.audio?.explosion?.();
         ctx.audio?.stopRotor?.();
+        this.group.visible = false; // gunship disappears immediately
       }
-      this.deathT += dt;
-      // spin out and crash down
-      this.group.rotation.y += dt * 2.5;
-      this.group.rotation.z += dt * 0.8;
-      this.pos.y = Math.max(1.5, this.pos.y - dt * (4 + this.deathT * 3));
-      this.pos.x += dt * 1.5;
-      this.group.position.copy(this.pos);
-      // trailing smoke + a secondary blast on impact
-      this._smokeT -= dt;
-      if (this._smokeT <= 0) { this._smokeT = 0.08; this.group.getWorldPosition(this._tmp); ctx.vfx.impact(this._tmp); }
-      if (this.pos.y <= 1.6 && !this._impacted) {
-        this._impacted = true;
-        this.group.getWorldPosition(this._tmp);
-        ctx.vfx.explosion(this._tmp);
-        ctx.audio?.explosion?.();
-      }
-      if (this.deathT > 4) this.removable = true;
+      this.removable = true;        // remove the wreck right away
       return;
     }
 
