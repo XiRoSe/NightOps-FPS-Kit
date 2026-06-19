@@ -36,7 +36,7 @@ export class Controller {
 
     this._fwd = new THREE.Vector3();
     this._right = new THREE.Vector3();
-    this._euler = new THREE.Euler(0, Math.PI, 0, "YXZ");
+    this._euler = new THREE.Euler(0, 0, 0, "YXZ"); // face into the compound (-Z), not the wall behind
     this.camera.quaternion.setFromEuler(this._euler);
 
     this._onMove = (e) => {

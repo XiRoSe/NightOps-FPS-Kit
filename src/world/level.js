@@ -313,6 +313,7 @@ export class Level {
       const jf = con(t, wH, jw); jf.position.set(sx, wMidY, Ww / 2 + jw / 2);
       const jb = con(t, wH, jw); jb.position.set(sx, wMidY, -(Ww / 2 + jw / 2));
       const pane = new THREE.Mesh(new THREE.BoxGeometry(0.08, wH, Ww), glassMat); pane.position.set(sx, wMidY, 0);
+      pane.raycast = () => {}; // shoot-through glass (renders, but bullets/laser pass; wall still blocks walking)
       g.add(sill, head, jf, jb, pane);
     }
     g.position.set(x, 0, z);

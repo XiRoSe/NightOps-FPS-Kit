@@ -53,7 +53,7 @@ class Game {
     this.scene.add(this.laserBeam);
     this.touch = new TouchControls(this.input);
     this.heli = null;
-    this._heliDelay = 7 + Math.random() * 8; // gunship arrives 7-15s into the fight
+    this._heliDelay = 5; // gunship always arrives 5s into the fight
     this._playTime = 0;
     this._heliSpawned = false;
     this._heliKilled = false;
