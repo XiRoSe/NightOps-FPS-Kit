@@ -35,6 +35,7 @@ export class Audio {
       step4: "/audio/step4.wav",
       explosion: "/audio/explosion.wav",
       heli_fire: "/audio/heli_fire.wav",
+      helicopter: "/audio/helicopter.ogg",
     };
     for (const [name, url] of Object.entries(clips)) {
       try {
@@ -131,22 +132,29 @@ export class Audio {
     this._noiseBurst(0.08, 1800, 1, 0.2);
   }
   startRotor() {
-    if (this._rotor || !this.ctx) return;
-    // low engine rumble: quiet, low, lowpassed (a thrum — not a buzz)
+    if (!this.ctx || this._rotorSrc || this._rotor) return;
+    // real looping helicopter rotor clip
+    if (this.buffers.helicopter) {
+      const s = this.ctx.createBufferSource(); s.buffer = this.buffers.helicopter; s.loop = true;
+      const g = this.ctx.createGain(); g.gain.value = 0.55;
+      s.connect(g); g.connect(this.master); s.start();
+      this._rotorSrc = s; this._rotorGain = g;
+      return;
+    }
+    // synth fallback: low rumble + blade "whomp"
     this._turbine = this.ctx.createOscillator();
     this._turbineG = this.ctx.createGain();
     const lp = this.ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 130; lp.Q.value = 0.6;
     this._turbine.type = "sawtooth"; this._turbine.frequency.value = 60;
     this._turbineG.gain.value = 0.05;
     this._turbine.connect(lp); lp.connect(this._turbineG); this._turbineG.connect(this.master);
-    this._turbine.start();
-    this._turbineLP = lp;
-    // rotor blade chop: a soft low "whomp" ~11/sec (lowpassed noise, no tonal buzz)
+    this._turbine.start(); this._turbineLP = lp;
     const chop = () => this._noiseBurst(0.09, 120, 0.6, 0.32, "lowpass");
     chop();
     this._rotor = setInterval(chop, 92);
   }
   stopRotor() {
+    if (this._rotorSrc) { try { this._rotorSrc.stop(); } catch (e) { /* already stopped */ } this._rotorSrc.disconnect(); this._rotorSrc = null; }
     if (this._rotor) { clearInterval(this._rotor); this._rotor = null; }
     if (this._turbine) { try { this._turbine.stop(); } catch (e) { /* already stopped */ } this._turbine.disconnect(); this._turbine = null; }
     if (this._turbineLP) { this._turbineLP.disconnect(); this._turbineLP = null; }

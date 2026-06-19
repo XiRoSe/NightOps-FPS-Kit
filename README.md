@@ -48,4 +48,5 @@ textures, Web Audio. Single-page; no backend.
 ## Credits
 
 - Attack helicopter: built procedurally (no external model).
+- Helicopter rotor loop: from [w84death/the-complex-project](https://github.com/w84death/the-complex-project) (MIT).
 - Soldier model & CS audio: see in-repo sources.
