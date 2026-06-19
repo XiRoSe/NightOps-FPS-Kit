@@ -20,9 +20,9 @@ const CSS = `
 #touch .jump { left:50%; transform:translateX(-130px); bottom:60px; width:78px; height:78px; border-radius:50%; }
 #touch .duck { left:50%; transform:translateX(52px); bottom:60px; width:78px; height:78px; border-radius:50%; }
 #touch .reload { left:50%; transform:translateX(-49px); bottom:150px; width:98px; height:58px; }
-/* mobile: stats up top-left (HP above the rounds counter), bottom clear for controls */
-body.mobile #health { top:116px; bottom:auto; left:14px; right:auto; transform:scale(.9); transform-origin:top left; }
-body.mobile #ammo { top:182px; bottom:auto; left:14px; right:auto; text-align:left; transform:scale(.9); transform-origin:top left; }
+/* mobile: HP + rounds on the RIGHT (HP above ammo), other stats stay on the left, bottom clear for controls */
+body.mobile #health { top:16px; bottom:auto; right:14px; left:auto; text-align:right; transform:scale(.9); transform-origin:top right; }
+body.mobile #ammo { top:84px; bottom:auto; right:14px; left:auto; text-align:right; transform:scale(.9); transform-origin:top right; }
 /* rotate-to-landscape gate (portrait phones) */
 #rotate { position:absolute; inset:0; z-index:60; display:none; flex-direction:column; align-items:center;
   justify-content:center; gap:18px; background:#0a0e08; color:#d8e0c8; text-align:center; pointer-events:auto;
