@@ -38,7 +38,9 @@ body.portrait #touch.on { display:none; }
 export class TouchControls {
   constructor(input) {
     this.input = input;
-    this.enabled = (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) || "ontouchstart" in window;
+    // touch device = the PRIMARY pointer is coarse (real phone/tablet).
+    // NOTE: "ontouchstart" in window is true on desktop Chrome too, so we must NOT use it.
+    this.enabled = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
     if (!this.enabled) return;
     document.body.classList.add("mobile");
 
