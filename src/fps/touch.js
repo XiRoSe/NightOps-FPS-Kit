@@ -38,9 +38,11 @@ body.portrait #touch.on { display:none; }
 export class TouchControls {
   constructor(input) {
     this.input = input;
-    // touch device = the PRIMARY pointer is coarse (real phone/tablet).
-    // NOTE: "ontouchstart" in window is true on desktop Chrome too, so we must NOT use it.
-    this.enabled = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+    // Touch device = has a coarse pointer AND NO fine pointer (no mouse/trackpad).
+    // (pointer:coarse) / ontouchstart are both true on many desktops, so we exclude
+    // anything that has a fine pointer available — i.e. only real phones/tablets qualify.
+    const mm = window.matchMedia;
+    this.enabled = !!(mm && mm("(any-pointer: coarse)").matches && !mm("(any-pointer: fine)").matches);
     if (!this.enabled) return;
     document.body.classList.add("mobile");
 
