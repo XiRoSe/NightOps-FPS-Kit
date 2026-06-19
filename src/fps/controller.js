@@ -84,14 +84,14 @@ export class Controller {
     const tc = input.touch;
     if (tc) { ix += tc.mx; iz += tc.mz; }
 
-    // touch look (mobile has no pointer lock — apply accumulated drag deltas)
-    if (tc && (tc.lookDX || tc.lookDY)) {
+    // touch LOOK stick (mobile): rate-based turn while the stick is held
+    if (tc && (tc.lookRX || tc.lookRY)) {
+      const rate = 2.6; // radians/sec at full deflection
       this._euler.setFromQuaternion(this.camera.quaternion);
-      this._euler.y -= tc.lookDX * this.sensitivity;
-      this._euler.x -= tc.lookDY * this.sensitivity;
+      this._euler.y -= tc.lookRX * rate * dt;
+      this._euler.x -= tc.lookRY * rate * dt;
       this._euler.x = Math.max(-1.5, Math.min(1.5, this._euler.x));
       this.camera.quaternion.setFromEuler(this._euler);
-      tc.lookDX = 0; tc.lookDY = 0;
     }
 
     const dir = this._tmpDir || (this._tmpDir = new THREE.Vector3());

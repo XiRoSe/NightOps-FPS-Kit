@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { COLORS, box, cyl } from "../util/builders.js";
+import { COLORS, box, cyl, mat } from "../util/builders.js";
 
 // Attack helicopter boss: descends from the sky, hovers and strafes while firing,
 // can be shot down, then explodes and crashes.
@@ -63,8 +63,27 @@ export class Helicopter {
       tb.rotation.z = i * Math.PI / 2; this.tailRotor.add(tb);
     }
     this.tailRotor.position.set(0.32, 0.6, -4.7); this.group.add(this.tailRotor);
+
+    // rotor blur discs (read as fast-spinning blades)
+    const discMat = () => new THREE.MeshBasicMaterial({ color: 0x15171a, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false });
+    const mainDisc = new THREE.Mesh(new THREE.CircleGeometry(3.6, 28), discMat());
+    mainDisc.rotation.x = -Math.PI / 2; mainDisc.position.set(0, 1.02, 0.2); this.group.add(mainDisc);
+    const tailDisc = new THREE.Mesh(new THREE.CircleGeometry(0.72, 18), discMat());
+    tailDisc.rotation.y = Math.PI / 2; tailDisc.position.set(0.4, 0.6, -4.7); this.group.add(tailDisc);
+
+    // navigation lights (port red / starboard green) + blinking belly beacon
+    const lightMesh = (c) => new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), mat(c, { emissive: c, emissiveIntensity: 1.4 }));
+    const navL = lightMesh(0xff3326); navL.position.set(-0.95, 0, 0.4); this.group.add(navL);
+    const navR = lightMesh(0x33ff66); navR.position.set(0.95, 0, 0.4); this.group.add(navR);
+    this.beacon = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), mat(0xff2a2a, { emissive: 0xff2a2a, emissiveIntensity: 1.4 }).clone());
+    this.beacon.position.set(0, -0.85, -1.6); this.group.add(this.beacon);
+
+    // chin minigun turret
+    const turret = cyl(0.2, 0.24, 0.34, COLORS.metalDark, 8, { metalness: 0.6 }); turret.position.set(0, -0.72, 2.0); this.group.add(turret);
+    const barrels = cyl(0.07, 0.07, 0.6, 0x111316, 6, { metalness: 0.7 }); barrels.rotation.x = Math.PI / 2; barrels.position.set(0, -0.72, 2.5); this.group.add(barrels);
+
     // gun mount under nose
-    this._gunTip = new THREE.Object3D(); this._gunTip.position.set(0, -0.7, 2.4); this.group.add(this._gunTip);
+    this._gunTip = new THREE.Object3D(); this._gunTip.position.set(0, -0.72, 2.9); this.group.add(this._gunTip);
 
     // big invisible hitbox (raycastable, tagged)
     this.hitbox = new THREE.Mesh(
@@ -92,6 +111,8 @@ export class Helicopter {
     const spin = this.dead ? 4 : 26;
     this.mainRotor.rotation.y += spin * dt;
     this.tailRotor.rotation.x += spin * 1.6 * dt;
+    // blinking belly beacon
+    if (this.beacon) this.beacon.material.emissiveIntensity = Math.sin(t * 9) > 0 ? 1.8 : 0.12;
 
     if (this.dead) {
       if (this._needExplode) {
@@ -144,11 +165,19 @@ export class Helicopter {
 
   _fire(playerPos, ctx) {
     this._gunTip.getWorldPosition(this._muzzle);
-    ctx.vfx.muzzle(this._muzzle);
-    ctx.audio?.heliShot?.();
-    this._tmp.set(playerPos.x, playerPos.y - 0.1, playerPos.z);
-    ctx.vfx.tracer(this._muzzle, this._tmp);
-    // a short burst with modest accuracy
-    if (Math.random() < 0.3) ctx.onPlayerHit(5 + Math.floor(Math.random() * 6));
+    // minigun: a rapid 4-round burst with spread + ground impacts around the player
+    for (let i = 0; i < 4; i++) {
+      setTimeout(() => {
+        if (this.dead) return;
+        this._gunTip.getWorldPosition(this._muzzle);
+        ctx.vfx.muzzle(this._muzzle);
+        ctx.audio?.heliShot?.();
+        this._tmp.set(playerPos.x + (Math.random() - 0.5) * 2.4, playerPos.y - 0.2, playerPos.z + (Math.random() - 0.5) * 2.4);
+        ctx.vfx.tracer(this._muzzle, this._tmp);
+        // most rounds kick up dust near the player; some connect
+        if (Math.random() < 0.22) ctx.onPlayerHit(4 + Math.floor(Math.random() * 5));
+        else { this._tmp.y = 0.1; ctx.vfx.impact(this._tmp, this._up || (this._up = new THREE.Vector3(0, 1, 0))); }
+      }, i * 70);
+    }
   }
 }

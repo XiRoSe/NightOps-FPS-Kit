@@ -36,6 +36,13 @@ export class VFX {
     // thin additive tracers
     const tg = new THREE.CylinderGeometry(0.01, 0.01, 1, 4); tg.translate(0, 0.5, 0);
     this.tracers = this._pool(20, tg, () => new THREE.MeshBasicMaterial({ color: 0xfff0bf, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    // expanding shockwave rings (billboarded)
+    const ring = new THREE.RingGeometry(0.55, 0.72, 28);
+    this.rings = this._pool(4, ring, () => new THREE.MeshBasicMaterial({ color: 0xffe6b0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+    // flying debris chunks
+    const chunk = new THREE.BoxGeometry(0.22, 0.22, 0.22);
+    this.debris = this._pool(18, chunk, () => new THREE.MeshStandardMaterial({ color: 0x2a2724, roughness: 0.9 }));
+    this.debris.forEach((d) => { d.vel = new THREE.Vector3(); d.spin = new THREE.Vector3(); });
   }
 
   setCamera(cam) { this._cam = cam; }
@@ -113,16 +120,37 @@ export class VFX {
     this._flash(point, 0.8, 0xffe0a0);
   }
 
-  // big explosion: fireball flashes + lots of embers + rolling smoke
+  // big "wow" explosion: fireball + shockwave ring + flying debris + smoke
   explosion(point) {
-    for (let i = 0; i < 4; i++) {
-      const p = point.clone().add(new THREE.Vector3((Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5));
-      this._flash(p, 2.2 + Math.random(), i % 2 ? 0xffd27a : 0xff9a3c);
-    }
-    this._embers(point, 0xffb24a, 34, 10);
     for (let i = 0; i < 5; i++) {
-      const p = point.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2, Math.random(), (Math.random() - 0.5) * 2));
-      this._dustPuff(p, 0x2a2520, 1.8 + Math.random());
+      const p = point.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2));
+      this._flash(p, 2.6 + Math.random() * 1.5, i % 2 ? 0xffd27a : 0xff8a30);
+    }
+    this._embers(point, 0xffb24a, 42, 12);
+    for (let i = 0; i < 6; i++) {
+      const p = point.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2.5, Math.random() * 1.5, (Math.random() - 0.5) * 2.5));
+      this._dustPuff(p, 0x2a2520, 2.0 + Math.random() * 1.2);
+    }
+    this._shockwave(point);
+    this._spawnDebris(point, 12);
+  }
+
+  _shockwave(point) {
+    const r = this._next(this.rings);
+    r.mesh.position.copy(point);
+    r.mesh.scale.setScalar(0.5);
+    r.mesh.visible = true; r.mesh.material.opacity = 0.9;
+    r.life = r.max = 0.45; r.grow = 22;
+  }
+  _spawnDebris(point, n) {
+    for (let i = 0; i < n; i++) {
+      const d = this._next(this.debris);
+      d.mesh.position.copy(point);
+      d.mesh.scale.setScalar(0.5 + Math.random() * 1.1);
+      d.mesh.visible = true;
+      d.vel.set((Math.random() - 0.5), Math.random() * 0.9 + 0.5, (Math.random() - 0.5)).multiplyScalar(7 + Math.random() * 8);
+      d.spin.set(Math.random() * 8, Math.random() * 8, Math.random() * 8);
+      d.life = d.max = 1.6 + Math.random() * 0.8;
     }
   }
 
@@ -160,6 +188,20 @@ export class VFX {
     for (const d of this.decals) if (d.life > 0) {
       d.life -= dt;
       if (d.life < 1) d.mesh.material.opacity = Math.max(0, d.life * 0.9);
+      if (d.life <= 0) d.mesh.visible = false;
+    }
+    for (const r of this.rings) if (r.life > 0) {
+      r.life -= dt; const k = 1 - r.life / r.max;
+      if (camQ) r.mesh.quaternion.copy(camQ);
+      r.mesh.scale.setScalar(0.5 + k * r.grow);
+      r.mesh.material.opacity = Math.max(0, (1 - k) * 0.9);
+      if (r.life <= 0) r.mesh.visible = false;
+    }
+    for (const d of this.debris) if (d.life > 0) {
+      d.life -= dt; d.vel.y -= 16 * dt;
+      d.mesh.position.addScaledVector(d.vel, dt);
+      d.mesh.rotation.x += d.spin.x * dt; d.mesh.rotation.y += d.spin.y * dt; d.mesh.rotation.z += d.spin.z * dt;
+      if (d.mesh.position.y < 0.1) { d.mesh.position.y = 0.1; d.vel.set(0, 0, 0); }
       if (d.life <= 0) d.mesh.visible = false;
     }
   }

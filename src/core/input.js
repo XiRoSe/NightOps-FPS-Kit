@@ -5,7 +5,8 @@ export class Input {
     this.mouseDown = false;
     this.pressed = [];
     // touch/mobile state (written by TouchControls)
-    this.touch = { mx: 0, mz: 0, lookDX: 0, lookDY: 0, fire: false, duck: false };
+    // mx/mz = move stick; lookRX/lookRY = look stick deflection (-1..1, rate-based)
+    this.touch = { mx: 0, mz: 0, lookRX: 0, lookRY: 0, fire: false, duck: false };
 
     window.addEventListener("keydown", (e) => {
       const k = e.key.toLowerCase();
