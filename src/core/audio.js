@@ -29,6 +29,10 @@ export class Audio {
       clipout: "/audio/clipout.wav",
       clipin: "/audio/clipin.wav",
       boltpull: "/audio/boltpull.wav",
+      step1: "/audio/step1.wav",
+      step2: "/audio/step2.wav",
+      step3: "/audio/step3.wav",
+      step4: "/audio/step4.wav",
     };
     for (const [name, url] of Object.entries(clips)) {
       try {
@@ -110,7 +114,11 @@ export class Audio {
     this._noiseBurst(0.18, 500, 0.7, 0.4);
     this._tone(80, 0.18, "sawtooth", 0.3, 40);
   }
-  step() { this._noiseBurst(0.05, 300, 1, 0.07); }
+  step() {
+    const n = 1 + Math.floor(Math.random() * 4);
+    if (this.playBuf("step" + n, 0.4, 0.92 + Math.random() * 0.16)) return;
+    this._noiseBurst(0.05, 300, 1, 0.07);
+  }
   win() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this._tone(f, 0.18, "square", 0.22), i * 130)); }
   lose() { [330, 262, 196, 131].forEach((f, i) => setTimeout(() => this._tone(f, 0.25, "sawtooth", 0.22), i * 160)); }
 }
