@@ -1,47 +1,20 @@
 import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { COLORS, box, noOutline } from "../util/builders.js";
+import { COLORS, box, noOutline } from "../engine/builders.js";
+import { RiggedAsset } from "../engine/actor.js";
 
-// --- load the rigged soldier once, share across all enemies ---
-let _asset = null;        // { scene, animations, scale }
-let _loading = null;
-export function preloadEnemies() {
-  if (_asset) return Promise.resolve();
-  if (_loading) return _loading;
-  const loader = new GLTFLoader();
-  _loading = new Promise((resolve, reject) => {
-    loader.load("/models/Soldier.glb", (gltf) => {
-      const bbox = new THREE.Box3().setFromObject(gltf.scene);
-      const height = bbox.max.y - bbox.min.y || 1;
-      _asset = { scene: gltf.scene, animations: gltf.animations, scale: 1.8 / height };
-      resolve();
-    }, undefined, reject);
-  });
-  return _loading;
-}
+// the rigged soldier model, loaded once and shared across all enemies
+const SOLDIER = new RiggedAsset("/models/Soldier.glb", 1.8);
+export function preloadEnemies() { return SOLDIER.preload(); }
 
-// A standalone rigged soldier clone (for the intro cinematic). Returns { model, bones } or null.
-export function makeSoldier() {
-  if (!_asset) return null;
-  const model = skeletonClone(_asset.scene);
-  model.scale.setScalar(_asset.scale);
-  model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
-  const bones = {};
-  model.traverse((o) => {
-    if (o.name === "mixamorigLeftArm") bones.lArm = o;
-    else if (o.name === "mixamorigRightArm") bones.rArm = o;
-    else if (o.name === "mixamorigLeftForeArm") bones.lFore = o;
-    else if (o.name === "mixamorigRightForeArm") bones.rFore = o;
-    else if (o.name === "mixamorigLeftUpLeg") bones.lUpLeg = o;
-    else if (o.name === "mixamorigRightUpLeg") bones.rUpLeg = o;
-    else if (o.name === "mixamorigLeftLeg") bones.lLeg = o;
-    else if (o.name === "mixamorigRightLeg") bones.rLeg = o;
-    else if (o.name === "mixamorigLeftHand") bones.lHand = o;
-    else if (o.name === "mixamorigRightHand") bones.rHand = o;
-  });
-  return { model, bones };
-}
+// arm/hand/spine/leg bones the enemy poses each frame (the clips carry no weapon/aim)
+const SOLDIER_BONES = {
+  rArm: "mixamorigRightArm", rFore: "mixamorigRightForeArm",
+  lArm: "mixamorigLeftArm", lFore: "mixamorigLeftForeArm",
+  rHand: "mixamorigRightHand", lHand: "mixamorigLeftHand",
+  spine: "mixamorigSpine", spine1: "mixamorigSpine1",
+  lUpLeg: "mixamorigLeftUpLeg", rUpLeg: "mixamorigRightUpLeg",
+  lLeg: "mixamorigLeftLeg", rLeg: "mixamorigRightLeg",
+};
 
 export class Enemy {
   constructor(scene, spawn, level) {
@@ -83,9 +56,10 @@ export class Enemy {
   }
 
   _build() {
-    // clone the rigged model (shares geometry/material — do NOT mutate materials)
-    this.model = skeletonClone(_asset.scene);
-    this.model.scale.setScalar(_asset.scale);
+    // clone the shared rigged model (shares geometry/material — do NOT mutate materials)
+    const inst = SOLDIER.make(SOLDIER_BONES);
+    this.model = inst.model;
+    this.bones = inst.bones;
     this.model.rotation.y = Math.PI; // model's front is -Z; face it along the group's +Z (toward target)
     this.model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = true; } });
     this.group.add(this.model);
@@ -93,28 +67,9 @@ export class Enemy {
     // animation mixer + clips
     this.mixer = new THREE.AnimationMixer(this.model);
     this.actions = {};
-    for (const clip of _asset.animations) this.actions[clip.name] = this.mixer.clipAction(clip);
+    for (const clip of inst.animations) this.actions[clip.name] = this.mixer.clipAction(clip);
     this._current = null;
     this._play(this.actions.Walk ? "Walk" : Object.keys(this.actions)[0]);
-
-    // cache arm + right-hand bones so the rifle can be parented to the hand and the
-    // arms posed into an aim each frame (the soldier clips carry no weapon/aim)
-    this.bones = {};
-    this.model.traverse((o) => {
-      if (!o.isBone) return;
-      if (o.name === "mixamorigRightArm") this.bones.rArm = o;
-      else if (o.name === "mixamorigRightForeArm") this.bones.rFore = o;
-      else if (o.name === "mixamorigLeftArm") this.bones.lArm = o;
-      else if (o.name === "mixamorigLeftForeArm") this.bones.lFore = o;
-      else if (o.name === "mixamorigRightHand") this.bones.rHand = o;
-      else if (o.name === "mixamorigLeftHand") this.bones.lHand = o;
-      else if (o.name === "mixamorigSpine") this.bones.spine = o;
-      else if (o.name === "mixamorigSpine1") this.bones.spine1 = o;
-      else if (o.name === "mixamorigLeftUpLeg") this.bones.lUpLeg = o;
-      else if (o.name === "mixamorigRightUpLeg") this.bones.rUpLeg = o;
-      else if (o.name === "mixamorigLeftLeg") this.bones.lLeg = o;
-      else if (o.name === "mixamorigRightLeg") this.bones.rLeg = o;
-    });
 
     // proper rifle — parented to the RIGHT HAND bone so it's truly part of the soldier
     // (follows duck, jump, and the arm pose; muzzle stays correct).

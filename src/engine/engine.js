@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { OutlineEffect } from "three/addons/effects/OutlineEffect.js";
-import { COLORS } from "../util/builders.js";
+import { COLORS } from "./builders.js";
 
 // Lightweight renderer: direct render (no post), PBR via image-based lighting.
 export class Engine {

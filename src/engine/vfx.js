@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { noOutline } from "../util/builders.js";
+import { noOutline } from "./builders.js";
 
 // Pooled combat VFX — soft textured sprites (no flat squares), additive glow for
 // sparks/flash, alpha dust puffs, lingering decals. No per-shot allocs, no lights.

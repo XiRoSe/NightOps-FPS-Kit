@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { COLORS, mat, box, cyl, texMat, groundTexture, makeCrate, makeBarrel, makeSandbags, makeBollard, makeExfilPad, makeFlag } from "../util/builders.js";
+import { COLORS, mat, box, cyl, texMat, groundTexture, makeCrate, makeBarrel, makeSandbags, makeBollard, makeExfilPad, makeFlag } from "../engine/builders.js";
 
 // Builds the compound and exposes colliders / spawns / objective data.
 export class Level {

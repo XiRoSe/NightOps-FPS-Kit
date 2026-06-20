@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { COLORS, box } from "../util/builders.js";
+import { COLORS, box } from "./builders.js";
 
 // First-person rifle: viewmodel, ammo, recoil spring, muzzle flash.
 export class Weapon {

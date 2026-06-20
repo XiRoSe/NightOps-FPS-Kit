@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { COLORS, box, cyl, noOutline } from "../util/builders.js";
+import { COLORS, box, cyl, noOutline } from "../engine/builders.js";
 import { makeOperator } from "./operator.js";
 
 // Third-person fast-rope insertion: a helicopter sweeps in over the compound with the

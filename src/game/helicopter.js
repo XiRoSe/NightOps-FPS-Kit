@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { COLORS, box, cyl, mat, noOutline } from "../util/builders.js";
+import { COLORS, box, cyl, mat, noOutline } from "../engine/builders.js";
 
 let HELI_TPL = null; // (kept for future glTF use; we build the gunship procedurally for control)
 export async function preloadHeli() { /* using a procedural attack gunship — nothing to load */ }
