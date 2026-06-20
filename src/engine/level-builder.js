@@ -323,9 +323,12 @@ export class LevelBuilder {
     if (this._bombLed) this._bombLed.visible = Math.sin(t * 6) > -0.3; // blinking charge indicator
     if (this.pickups) for (const p of this.pickups) {
       if (p.taken) continue;
+      const bob = 0.55 + Math.sin(t * 2.2) * 0.12; // hover height
       p.box.rotation.y = t * 1.6;
-      p.box.position.y = 0.55 + Math.sin(t * 2.2) * 0.12; // hover bob
-      const pulse = 0.75 + Math.sin(t * 3) * 0.25;        // gentle glow pulse
+      p.box.position.y = bob;
+      p.glow.position.y = bob + 0.15;   // glow rides with the box
+      p.light.position.y = bob + 0.35;
+      const pulse = 0.75 + Math.sin(t * 3) * 0.25;  // gentle glow pulse
       p.glow.material.opacity = 0.22 * pulse;
       p.light.intensity = 3 * pulse;
     }
