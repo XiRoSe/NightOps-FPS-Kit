@@ -8,7 +8,7 @@ export const desertBase = {
   config: {
     helicopter: { spawnDelay: 12 },                 // longer approach before the gunship
     scene: { fog: { color: 0x0e1626, near: 45, far: 200 } }, // see across the bigger base
-    objective: { type: "defuse", timeLimit: 180, codeLength: 3 }, // disarm the bomb in 3:00
+    objective: { type: "defuse", timeLimit: 180, codeLength: 3, maxTries: 3 }, // disarm in 3:00, 3 tries
   },
 
   build(b) {
@@ -89,12 +89,12 @@ export const desertBase = {
     b.floodlight(-32, -10, 6.4, 0, -10, true, 170);
     b.floodlight(32, -10, 6.4, 0, -10, true, 170);
 
-    // ---- ammo resupply: 5 magazines (+30 rounds each) along the route ----
-    b.ammo(-9, 46);   // at the checkpoint
-    b.ammo(-30, 20);  // motor pool
-    b.ammo(26, 22);   // storage building
-    b.ammo(8, -6);    // central HQ
-    b.ammo(-12, -52); // near the bomb
+    // ---- ammo resupply: 5 glowing magazines (+30 rounds each), in the open along the route ----
+    b.ammo(0, 50);    // just inside the gate, on the road
+    b.ammo(-3, 22);   // yard entrance
+    b.ammo(5, 4);     // in front of the HQ doorway
+    b.ammo(0, -30);   // corridor toward the rear
+    b.ammo(6, -50);   // just before the bomb
 
     // ---- perimeter dressing ----
     b.fence(-38, 57, -38, -65); b.fence(38, 57, 38, -65);

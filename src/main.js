@@ -74,7 +74,14 @@ class Game {
     if (this.objType === "defuse") {
       this.bombTime = this.cfg.objective.timeLimit;
       this.codeLen = this.cfg.objective.codeLength || 3;
-      this.bombCode = Array.from({ length: this.codeLen }, () => Math.floor(Math.random() * 10)).join("");
+      // one solvable code: an arithmetic sequence the player can deduce from a single hint
+      const maxStep = Math.max(1, Math.floor(8 / (this.codeLen - 1)));
+      const step = 1 + Math.floor(Math.random() * maxStep);
+      const first = 1 + Math.floor(Math.random() * Math.max(1, 9 - (this.codeLen - 1) * step));
+      this.bombCode = Array.from({ length: this.codeLen }, (_, i) => first + i * step).join("");
+      this.bombHint = `HINT — first digit ${first}, then +${step} each`;
+      this.maxTries = this.cfg.objective.maxTries || 3;
+      this.codeTries = 0;
       this.defusing = false; this.defused = false; this.codeTyped = ""; this.codeFeedback = "";
     }
 
@@ -220,12 +227,23 @@ class Game {
     this.voice.lose();
   }
 
+  // bomb goes off: a big rolling explosion (reuses the gunship blast), then the fail screen
+  _detonate() {
+    if (this.state === "detonate" || this.state === "lose") return;
+    this.state = "detonate";
+    this._detT = 1.5; this._detBlast = 0;
+    this.defusing = false; this.hud.hideDefuse(); this.hud.showTimer(false); this.hud.setCombatVisible(false);
+    this.controller.unlock(); this.audio.stopRotor();
+    const b = this.level.bomb; this._bombPos = new THREE.Vector3(b.x, 1, b.z);
+    this.audio.explosion?.();
+  }
+
   // bomb objective: countdown, proximity disarm panel, code entry, win/lose
   _updateDefuse(dt, presses) {
     this.bombTime -= dt;
     this.hud.setMissionTimer(this.bombTime);
     this.hud.setCounter("Eliminated", this.combat.killCount);
-    if (this.bombTime <= 0) { this._lose("The bomb detonated", 'Mission <span class="hz">Failed</span>'); return; }
+    if (this.bombTime <= 0) { this._detonate(); return; }
     if (this.defused) return;
 
     const bmb = this.level.bomb;
@@ -233,7 +251,7 @@ class Game {
     const near = (dx * dx + dz * dz) < bmb.r * bmb.r;
     if (near && !this.defusing) {
       this.defusing = true; this.codeTyped = "";
-      this.codeFeedback = `ENTER THE ${this.codeLen}-DIGIT CODE`;
+      this.codeFeedback = this.bombHint;
       this.hud.showDefuse(this.codeLen); this.hud.updateDefuse("", this.codeFeedback);
     } else if (!near && this.defusing) {
       this.defusing = false; this.hud.hideDefuse();
@@ -252,7 +270,9 @@ class Game {
             this._win({ disarmed: true, timeLeft: `${mm}:${String(ss).padStart(2, "0")}`, title: 'Bomb <span class="hz">Disarmed</span>' });
             return;
           }
-          this.codeFeedback = `${correct}/${this.codeLen} CORRECT — RETRY`;
+          this.codeTries++;
+          if (this.codeTries >= this.maxTries) { this.hud.hideDefuse(); this._detonate(); return; }
+          this.codeFeedback = `WRONG (${this.codeTries}/${this.maxTries}) — ${this.bombHint}`;
           this.codeTyped = "";
         }
       }
@@ -300,6 +320,19 @@ class Game {
       if (this.intro.done || this.input.mouseDown || pressed.length || this.input.touch.fire) this._endIntro();
       return;
     }
+    if (this.state === "detonate") {
+      this.input.drainPresses();
+      this._detT -= dt;
+      this._detBlast -= dt;
+      if (this._detBlast <= 0) { // rolling cluster of blasts around the bomb
+        this._detBlast = 0.13;
+        const o = this._bombPos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 7, Math.random() * 3, (Math.random() - 0.5) * 7));
+        this.vfx.explosion(o);
+      }
+      this.hud._shake = Math.max(this.hud._shake, 12);
+      if (this._detT <= 0) this._lose("The bomb detonated", 'Mission <span class="hz">Failed</span>');
+      return;
+    }
     if (this.state !== "play") { this.input.drainPresses(); return; }
     if (this.input.touch.suspended) { this.input.drainPresses(); return; } // portrait gate on mobile
 
@@ -330,7 +363,7 @@ class Game {
         if (p.taken) continue;
         const dx = this.camera.position.x - p.x, dz = this.camera.position.z - p.z;
         if (dx * dx + dz * dz < p.r * p.r) {
-          p.taken = true; p.mesh.visible = false;
+          p.taken = true; p.group.visible = false;
           this.weapon.reserve += p.rounds;
           this.audio.playBuf?.("clipin", 0.6);
           this.hud.notify(`+${p.rounds} ROUNDS · MAGAZINE`);

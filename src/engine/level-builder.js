@@ -120,13 +120,21 @@ export class LevelBuilder {
 
   bollard(x, z) { const b = makeBollard(); b.position.set(x, 0, z); this.scene.add(b); }
 
-  // an ammo magazine pickup (hovers + spins); collected on proximity for +rounds reserve
+  // an ammo magazine pickup with a simple soft radial glow so it's findable at night;
+  // hovers + spins; collected on proximity for +rounds reserve
   ammo(x, z, rounds = 30) {
-    const g = makeAmmo();
-    g.position.set(x, 0.5, z);
-    this.scene.add(g);
+    const C = 0xffce73; // warm amber
+    const pg = new THREE.Group(); pg.position.set(x, 0, z);
+    const box = makeAmmo(); box.position.y = 0.55; pg.add(box);
+    // soft radial glow (a single additive sphere — reads the same from any angle)
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 12),
+      noOutline(new THREE.MeshBasicMaterial({ color: C, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending })));
+    glow.position.y = 0.7; pg.add(glow);
+    // gentle point light so it stands out from the dark ground
+    const light = new THREE.PointLight(C, 3, 9, 2); light.position.set(0, 0.9, 0); pg.add(light);
+    this.scene.add(pg);
     if (!this.pickups) this.pickups = [];
-    this.pickups.push({ x, z, r: 1.8, rounds, mesh: g, taken: false });
+    this.pickups.push({ x, z, r: 1.8, rounds, group: pg, box, glow, light, taken: false });
   }
 
   // objective: extraction pad + waving flag at (x,z); also records the win circle
@@ -315,8 +323,11 @@ export class LevelBuilder {
     if (this._bombLed) this._bombLed.visible = Math.sin(t * 6) > -0.3; // blinking charge indicator
     if (this.pickups) for (const p of this.pickups) {
       if (p.taken) continue;
-      p.mesh.rotation.y = t * 1.6;
-      p.mesh.position.y = 0.55 + Math.sin(t * 2.2) * 0.12; // hover bob
+      p.box.rotation.y = t * 1.6;
+      p.box.position.y = 0.55 + Math.sin(t * 2.2) * 0.12; // hover bob
+      const pulse = 0.75 + Math.sin(t * 3) * 0.25;        // gentle glow pulse
+      p.glow.material.opacity = 0.22 * pulse;
+      p.light.intensity = 3 * pulse;
     }
     if (!this.flag) return;
     const cloth = this.flag.userData.cloth, base = this.flag.userData.base, W = this.flag.userData.flagW;
