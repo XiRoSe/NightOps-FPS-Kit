@@ -126,15 +126,19 @@ export class LevelBuilder {
     const C = 0xffce73; // warm amber
     const pg = new THREE.Group(); pg.position.set(x, 0, z);
     const box = makeAmmo(); box.position.y = 0.55; pg.add(box);
+    // the box model's center offset above its own origin (so the glow can sit dead-centre on it)
+    box.updateWorldMatrix(true, true);
+    const bb = new THREE.Box3().setFromObject(box);
+    const cy = (bb.min.y + bb.max.y) / 2 - box.position.y;
     // soft radial glow (a single additive sphere — reads the same from any angle)
     const glow = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 12),
       noOutline(new THREE.MeshBasicMaterial({ color: C, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending })));
-    glow.position.y = 0.7; pg.add(glow);
+    glow.position.y = 0.55 + cy; pg.add(glow);
     // gentle point light so it stands out from the dark ground
-    const light = new THREE.PointLight(C, 3, 9, 2); light.position.set(0, 0.9, 0); pg.add(light);
+    const light = new THREE.PointLight(C, 3, 9, 2); light.position.set(0, 0.55 + cy, 0); pg.add(light);
     this.scene.add(pg);
     if (!this.pickups) this.pickups = [];
-    this.pickups.push({ x, z, r: 1.8, rounds, group: pg, box, glow, light, taken: false });
+    this.pickups.push({ x, z, r: 1.8, rounds, group: pg, box, glow, light, cy, taken: false });
   }
 
   // objective: extraction pad + waving flag at (x,z); also records the win circle
@@ -326,8 +330,9 @@ export class LevelBuilder {
       const bob = 0.55 + Math.sin(t * 2.2) * 0.12; // hover height
       p.box.rotation.y = t * 1.6;
       p.box.position.y = bob;
-      p.glow.position.y = bob + 0.15;   // glow rides with the box
-      p.light.position.y = bob + 0.35;
+      const center = bob + p.cy - 0.12;  // glow centred on the box, a touch lower
+      p.glow.position.y = center;
+      p.light.position.y = center;
       const pulse = 0.75 + Math.sin(t * 3) * 0.25;  // gentle glow pulse
       p.glow.material.opacity = 0.22 * pulse;
       p.light.intensity = 3 * pulse;
