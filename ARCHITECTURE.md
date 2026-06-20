@@ -6,10 +6,13 @@ modules and one config object.
 
 ```
 src/
-  engine/    reusable, game-agnostic — copy this to a new FPS unchanged
-  game/      "Clear the Compound" content + rules — rewrite this for a new game
-  main.js    the runner: wires engine + game, owns the state machine + per-frame loop
+  engine/    this game's reusable systems (render, controller, weapon, combat actors, level toolkit)
+  game/      content + rules: actors, config, and one module per level
+  main.js    the runner: picks a level, wires engine + game, owns the state machine + per-frame loop
 ```
+
+This is a **game-specific** engine (a night military-FPS), not a generic one — the toolkit
+knows about walls, towers, bunkers, vehicles and desert dressing on purpose.
 
 ## engine/ (reusable)
 

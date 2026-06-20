@@ -25,8 +25,8 @@ export class Enemy {
     this.patrol = spawn.patrol || [{ x: spawn.x, z: spawn.z }];
     this.wp = 0;
     this.yaw = Math.random() * Math.PI * 2;
-    this.speed = 2.4;
-    this.hp = 100;
+    this.speed = spawn.speed || 2.4;  // per-spawn tuning (tougher/faster guards)
+    this.hp = spawn.hp || 100;
     this.dead = false;
     this.counted = false;
     this.alertT = 0;

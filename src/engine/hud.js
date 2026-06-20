@@ -156,6 +156,7 @@ export class HUD {
   }
   setHostiles(n) { this.hostiles.textContent = n; }
   setObjective(html) { const o = this.root.querySelector("#objective .obj"); if (o) o.innerHTML = html; }
+  setOperation(name) { const o = this.root.querySelector("#mission .op"); if (o) o.textContent = name; }
 
   showLoading() {
     this._overlay(`<div class="sub">Preparing deployment</div><h1 class="mil-title">Loading<span class="hz">…</span></h1>`);

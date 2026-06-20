@@ -27,3 +27,15 @@ export const config = {
     objectiveCleared: 'All hostiles down — reach the <span class="arrow">FLAG ▲</span>',
   },
 };
+
+// Merge a level's per-section overrides on top of the base config (one level deep).
+export function mergeConfig(base, over = {}) {
+  const out = {};
+  for (const k of Object.keys(base)) {
+    out[k] = (base[k] && typeof base[k] === "object" && !Array.isArray(base[k]))
+      ? { ...base[k], ...(over[k] || {}) }
+      : (k in over ? over[k] : base[k]);
+  }
+  for (const k of Object.keys(over)) if (!(k in out)) out[k] = over[k];
+  return out;
+}

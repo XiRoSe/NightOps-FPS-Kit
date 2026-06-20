@@ -9,31 +9,38 @@ import { Controller } from "./engine/controller.js";
 import { Weapon } from "./engine/weapon.js";
 import { VFX } from "./engine/vfx.js";
 import { TouchControls } from "./engine/touch.js";
+import { LevelBuilder } from "./engine/level-builder.js";
 // game — this game's content + rules
-import { Level } from "./game/level.js";
 import { Combat } from "./game/combat.js";
 import { Helicopter, preloadHeli } from "./game/helicopter.js";
 import { Intro } from "./game/intro.js";
 import { preloadEnemies } from "./game/enemy.js";
 import { preloadOperator } from "./game/operator.js";
-import { config } from "./game/config.js";
+import { config, mergeConfig } from "./game/config.js";
+import { levels, DEFAULT_LEVEL } from "./game/levels/index.js";
 
 class Game {
   constructor() {
+    // pick the level (?level=<id>) and merge its overrides onto the base config
+    this.levelDef = levels[new URLSearchParams(location.search).get("level")] || levels[DEFAULT_LEVEL];
+    this.cfg = mergeConfig(config, this.levelDef.config || {});
+
     this.engine = new Engine(document.getElementById("app"));
     this.input = new Input();
     this.audio = new Audio();
     this.voice = new Voice();
     this.hud = new HUD();
+    this.hud.setOperation(this.levelDef.name);
 
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(config.scene.fog.color, config.scene.fog.near, config.scene.fog.far);
-    this.camera = new THREE.PerspectiveCamera(config.scene.fov, window.innerWidth / window.innerHeight, 0.1, 2000);
+    this.scene.fog = new THREE.Fog(this.cfg.scene.fog.color, this.cfg.scene.fog.near, this.cfg.scene.fog.far);
+    this.camera = new THREE.PerspectiveCamera(this.cfg.scene.fov, window.innerWidth / window.innerHeight, 0.1, 2000);
     this.scene.add(this.camera);
     this.engine.setupNight(this.scene);
     this.engine.addLights(this.scene);
 
-    this.level = new Level(this.scene);
+    this.level = new LevelBuilder(this.scene);
+    this.levelDef.build(this.level);
     this.controller = new Controller(this.camera, this.engine.renderer.domElement, this.level);
     this.controller.onStep = () => this.audio.step();
     this.weapon = new Weapon(this.camera, this.audio);
@@ -56,15 +63,15 @@ class Game {
     this.scene.add(this.laserBeam);
     this.touch = new TouchControls(this.input);
     this.heli = null;
-    this._heliDelay = config.helicopter.spawnDelay;
+    this._heliDelay = this.cfg.helicopter.spawnDelay;
     this._playTime = 0;
     this._heliSpawned = false;
     this._heliKilled = false;
 
-    this.health = config.player.maxHealth;
+    this.health = this.cfg.player.maxHealth;
     this.shotsFired = 0;
     this.shotsHit = 0;
-    this.baseFov = config.scene.fov;
+    this.baseFov = this.cfg.scene.fov;
     this._fovKick = 0;
     this.combat = null;
 
@@ -87,7 +94,7 @@ class Game {
     await Promise.all([preloadEnemies(), preloadHeli(), preloadOperator()]); // soldier enemies + helicopter + player operator
     this.combat = new Combat(this.scene, this.camera, this.level, this.weapon, this.vfx, this.audio, {
       onPlayerHit: (dmg) => this._onPlayerHit(dmg),
-      onKill: (count, left) => { this.hud.killFeed(config.messages.hostileDown); this.hud.setHostiles(left); this.voice.enemyDown(); },
+      onKill: (count, left) => { this.hud.killFeed(this.cfg.messages.hostileDown); this.hud.setHostiles(left); this.voice.enemyDown(); },
       onHitmarker: (killed) => { this.shotsHit++; this.hud.hitmarker(killed); this.audio.hitmarker(killed); },
     });
     this.hud.setHostiles(this.combat.enemiesLeft);
@@ -105,7 +112,7 @@ class Game {
   // Fast-rope insertion cinematic, then hand control to the player.
   _beginIntro() {
     if (this.state === "intro" || this._introDone) return;
-    if (!config.intro.enabled) { this._introDone = true; this._startPlay(); return; }
+    if (!this.cfg.intro.enabled) { this._introDone = true; this._startPlay(); return; }
     this.state = "intro";
     this.hud.hideOverlay();
     this.hud.setCombatVisible(false);
@@ -113,7 +120,7 @@ class Game {
     this.audio.startRotor();
     this.intro = new Intro(this.scene, this.camera, this.level.playerSpawn);
     this.intro.start();
-    this.hud.killFeed(config.messages.deployHint);
+    this.hud.killFeed(this.cfg.messages.deployHint);
     this._introT = 0;
     this._spottedCalled = false;
     this._introFar = new THREE.Vector3(0, -999, 0); // keeps enemies from detecting the player pre-game
@@ -146,7 +153,7 @@ class Game {
   _onPlayerHit(dmg) {
     if (this.state !== "play") return;
     this.health -= dmg;
-    this.hud.setHealth(this.health, config.player.maxHealth);
+    this.hud.setHealth(this.health, this.cfg.player.maxHealth);
     this.hud.damageFlash();
     this.audio.hurt();
     this._sinceHit = 0; // pause regen when taking fire
@@ -209,7 +216,7 @@ class Game {
       this.intro.update(dt);
       this.combat.update(dt, t, this._introFar); // enemies patrol/idle normally, never detect the player yet
       this._introT += dt;
-      if (!this._spottedCalled && this._introT > config.intro.spottedCalloutAt) { this._spottedCalled = true; this.voice.enemySpotted(); }
+      if (!this._spottedCalled && this._introT > this.cfg.intro.spottedCalloutAt) { this._spottedCalled = true; this.voice.enemySpotted(); }
       const pressed = this.input.drainPresses();
       if (this.intro.done || this.input.mouseDown || pressed.length || this.input.touch.fire) this._endIntro();
       return;
@@ -238,7 +245,7 @@ class Game {
     this.combat.update(dt, t, this.camera.position);
 
     // health regen: restore a little HP on a fixed interval
-    const hp = config.player;
+    const hp = this.cfg.player;
     this._healT = (this._healT || 0) + dt;
     if (this._healT >= hp.regenInterval) { this._healT -= hp.regenInterval; if (this.health < hp.maxHealth) this.health = Math.min(hp.maxHealth, this.health + hp.regenAmount); }
 
@@ -249,13 +256,13 @@ class Game {
       this.heli = new Helicopter(this.scene, this.level);
       this.combat.extraHittables.push(this.heli.hitbox);
       this.audio.startRotor();
-      this.hud.killFeed(config.messages.gunshipInbound);
+      this.hud.killFeed(this.cfg.messages.gunshipInbound);
     }
     if (this.heli) {
       this.heli.update(dt, t, this.camera.position, {
         vfx: this.vfx, audio: this.audio, onPlayerHit: (d) => this._onPlayerHit(d),
       });
-      if (this.heli.dead && !this._heliKilled) { this._heliKilled = true; this.hud.killFeed(config.messages.gunshipDown); this.voice.enemyDown(); }
+      if (this.heli.dead && !this._heliKilled) { this._heliKilled = true; this.hud.killFeed(this.cfg.messages.gunshipDown); this.voice.enemyDown(); }
       if (this.heli.removable) {
         this.scene.remove(this.heli.group);
         if (this.heli.headLight) this.scene.remove(this.heli.headLight, this.heli.headLight.target, this.heli.headBeam);
@@ -270,11 +277,11 @@ class Game {
 
     // HUD sync
     this.hud.setAmmo(this.weapon.ammo, this.weapon.reserve, this.weapon.reloading);
-    this.hud.setHealth(this.health, config.player.maxHealth);
+    this.hud.setHealth(this.health, this.cfg.player.maxHealth);
     this.hud.setHostiles(this.combat.enemiesLeft + (heliAlive ? 1 : 0));
     if (cleared !== this._cleared) {
       this._cleared = cleared;
-      this.hud.setObjective(cleared ? config.messages.objectiveCleared : config.messages.objective);
+      this.hud.setObjective(cleared ? this.cfg.messages.objectiveCleared : this.cfg.messages.objective);
     }
 
     // win check — reach the extraction flag, but ONLY once everything is dead
