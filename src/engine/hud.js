@@ -81,6 +81,13 @@ const CSS = `
 #defuse .code{ font-size:56px; font-weight:700; letter-spacing:.32em; font-variant-numeric:tabular-nums; margin:12px 0 6px; }
 #defuse .fb{ font-size:18px; color:var(--ok); letter-spacing:.1em; min-height:24px; }
 #defuse .hint{ font-size:13px; color:var(--dim); letter-spacing:.12em; margin-top:12px; }
+#ammo .nades{ font-size:13px; color:var(--hz); letter-spacing:.14em; margin-top:5px; }
+/* center action prompt (e.g. gunship inbound -> use the launcher) */
+#prompt{ position:absolute; left:50%; top:44%; transform:translateX(-50%); text-align:center; pointer-events:none;
+  background:rgba(18,22,16,.7); border:1px solid var(--hz); padding:10px 24px; opacity:0; transition:opacity .25s; }
+#prompt .p{ font-size:20px; font-weight:700; letter-spacing:.1em; }
+#prompt .p b{ color:var(--hz); }
+#prompt.on{ opacity:1; }
 .hidden{ display:none !important; }
 `;
 
@@ -98,7 +105,8 @@ export class HUD {
       <div id="objective" class="panel"><div class="lbl">Objective</div><div class="obj mil-title">Eliminate hostiles · reach <span class="arrow">EXTRACTION ▲</span></div></div>
       <div id="timer" class="panel hidden"><div class="lbl">Detonation</div><div class="t">3:00</div></div>
       <div id="health" class="panel"><div class="lbl">Vitals</div><div class="row"><b>100</b><span class="dim">HP</span></div><div id="hpbar"><i></i></div></div>
-      <div id="ammo" class="panel"><div class="gun">MK-4 CARBINE</div><div class="count"><b>30</b><s> / 150</s></div></div>
+      <div id="ammo" class="panel"><div class="gun">MK-4 CARBINE</div><div class="count"><b>30</b><s> / 150</s></div><div class="nades">✦ GRENADES 5</div></div>
+      <div id="prompt"><div class="p"></div></div>
       <div id="feed"></div>
       <div id="defuse" class="hidden"><div class="box">
         <div class="ttl">⚠ Bomb · Enter Disarm Code</div>
@@ -181,6 +189,9 @@ export class HUD {
     this.ammoEl.classList.toggle("low", !reloading && ammo <= 6);
   }
   setHostiles(n) { this.hostiles.textContent = n; }
+  setGrenades(n) { const e = this.root.querySelector("#ammo .nades"); if (e) e.textContent = `✦ GRENADES ${n}`; }
+  setWeaponName(name) { const e = this.root.querySelector("#ammo .gun"); if (e) e.textContent = name; }
+  showPrompt(html, dur = 4) { const el = this.root.querySelector("#prompt"); el.querySelector(".p").innerHTML = html; el.classList.add("on"); this._promptT = dur; }
   // generic top-left counter (e.g. "Hostiles" remaining, or "Eliminated" kill count)
   setCounter(label, value) { this.root.querySelector("#hostiles .lbl").textContent = label; this.hostiles.textContent = value; }
   setObjective(html) { const o = this.root.querySelector("#objective .obj"); if (o) o.innerHTML = html; }
@@ -250,6 +261,8 @@ export class HUD {
     this.xhair.querySelector(".t-r").style.transform = `translateX(${g}px)`;
     // hitmarker fade
     if (this._hitT > 0) { this._hitT -= dt; this.hitmark.style.opacity = Math.max(0, this._hitT / 0.18); }
+    // action prompt timeout
+    if (this._promptT > 0) { this._promptT -= dt; if (this._promptT <= 0) this.root.querySelector("#prompt").classList.remove("on"); }
     // damage vignette
     if (this._dmgT > 0) { this._dmgT -= dt; this.dmg.style.opacity = Math.max(0, this._dmgT / 0.5); }
     // screen shake

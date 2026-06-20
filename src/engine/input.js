@@ -15,8 +15,12 @@ export class Input {
       if (["w", "a", "s", "d", " ", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) e.preventDefault();
     });
     window.addEventListener("keyup", (e) => this.down.delete(e.key.toLowerCase()));
-    window.addEventListener("mousedown", (e) => { if (e.button === 0) this.mouseDown = true; });
+    window.addEventListener("mousedown", (e) => {
+      if (e.button === 0) this.mouseDown = true;
+      if (e.button === 2) this.pressed.push("rmb"); // right-click = one-shot (grenade)
+    });
     window.addEventListener("mouseup", (e) => { if (e.button === 0) this.mouseDown = false; });
+    window.addEventListener("contextmenu", (e) => e.preventDefault()); // no menu on right-click
   }
 
   isDown(...keys) { return keys.some((k) => this.down.has(k)); }

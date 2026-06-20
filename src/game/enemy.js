@@ -140,6 +140,25 @@ export class Enemy {
     this.hitbox.visible = false;
   }
 
+  // flung by an explosion with a precomputed impulse (from the engine impact system):
+  // ragdoll up + away, then tumble to the ground
+  applyImpulse(impulse) {
+    if (this.blasted) return;
+    this.blasted = true;
+    if (!this.dead) this._die();
+    this._bv = impulse.clone();
+    this._flyY = this.baseY + 0.4;
+    this._spinAng = 0;
+    this._spinRate = 5 + Math.random() * 5; // tumble speed, proportional-ish to the hit
+  }
+
+  // shoved by a nearby blast but survived — slide away from the centre, briefly staggered
+  applyKnockback(impulse) {
+    if (!this._kb) this._kb = new THREE.Vector3();
+    this._kb.set(impulse.x, 0, impulse.z);
+    this.alertT = 8; // it definitely noticed
+  }
+
   canSee(playerPos) {
     const d = Math.hypot(playerPos.x - this.pos.x, playerPos.z - this.pos.z);
     // elevated watchtower guards look down OVER low cover, but tall walls/buildings still block them
@@ -213,10 +232,29 @@ export class Enemy {
   update(dt, playerPos, ctx) {
     if (this.dead) {
       this.deathT += dt;
-      const p = Math.min(this.deathT / 0.7, 1);
-      this.group.rotation.x = -p * Math.PI * 0.48;
-      this.group.position.y = this.baseY * (1 - p) - p * 0.5; // tumble down (off a tower if raised)
-      if (this.deathT > 2.2) this.removable = true;
+      if (this.blasted) {
+        // launched by an explosion: ballistic arc + tumble while airborne, then settle flat on the ground
+        if (this._flyY > this.baseY + 0.04) {
+          this._bv.y -= 24 * dt; // gravity
+          this.pos.x += this._bv.x * dt; this.pos.z += this._bv.z * dt;
+          this._flyY += this._bv.y * dt;
+          this._spinAng += dt * this._spinRate;                 // tumble in flight
+          this.group.position.set(this.pos.x, Math.max(this.baseY, this._flyY), this.pos.z);
+          this.group.rotation.set(this._spinAng, this.yaw, this._spinAng * 0.5);
+        } else {
+          // hit the ground — stop, and ease into a flat "fallen" pose (no more spinning)
+          this._bv.set(0, 0, 0); this._flyY = this.baseY;
+          this.group.position.set(this.pos.x, this.baseY, this.pos.z);
+          const k = Math.min(1, dt * 9);
+          this.group.rotation.x += (-Math.PI / 2 - this.group.rotation.x) * k;
+          this.group.rotation.z += (0 - this.group.rotation.z) * k;
+        }
+      } else {
+        const p = Math.min(this.deathT / 0.7, 1);
+        this.group.rotation.x = -p * Math.PI * 0.48;
+        this.group.position.y = this.baseY * (1 - p) - p * 0.5; // tumble down (off a tower if raised)
+      }
+      if (this.deathT > 2.6) this.removable = true;
       return;
     }
 
@@ -295,6 +333,14 @@ export class Enemy {
       if (this._moveToward(t.x, t.z, dt)) this.wp = (this.wp + 1) % this.patrol.length;
       this.yaw = Math.atan2(t.x - this.pos.x, t.z - this.pos.z);
       this._play("Walk");
+    }
+
+    // explosion knockback while still alive — shoved away from the blast, sliding to a stop
+    if (this._kb && this._kb.lengthSq() > 0.02) {
+      const nx = this.pos.x + this._kb.x * dt, nz = this.pos.z + this._kb.z * dt;
+      if (!this._blocked(nx, this.pos.z)) this.pos.x = nx;
+      if (!this._blocked(this.pos.x, nz)) this.pos.z = nz;
+      this._kb.multiplyScalar(Math.pow(0.015, dt)); // quick friction
     }
 
     this.group.position.set(this.pos.x, this.baseY, this.pos.z);

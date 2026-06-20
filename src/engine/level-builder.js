@@ -109,6 +109,28 @@ export class LevelBuilder {
       const bx = x + (i % 2) * 0.85 - 0.4, bz = z + Math.floor(i / 2) * 0.85 - 0.2;
       b.position.set(bx, 0.55, bz); this.scene.add(b);
       this.collide(bx, bz, 0.8, 0.8, 1.1);
+      // light enough to be flung by explosions (the impact system pushes it by mass)
+      this._addDynamic(b, 0.55, 1.3);
+    }
+  }
+
+  // register a prop that explosions can move; `mass` decides how far it's flung (heavy = barely)
+  _addDynamic(mesh, restY, mass) {
+    if (!this.dynamics) this.dynamics = [];
+    this.dynamics.push({ mesh, pos: mesh.position.clone(), vel: new THREE.Vector3(), spin: new THREE.Vector3(), restY, mass, rest: true });
+  }
+
+  // integrate any props that an explosion set in motion (gravity, ground, friction, settle)
+  updateDynamics(dt) {
+    if (!this.dynamics) return;
+    for (const d of this.dynamics) {
+      if (d.rest) continue;
+      d.vel.y -= 20 * dt;
+      d.pos.addScaledVector(d.vel, dt);
+      if (d.pos.y <= d.restY) { d.pos.y = d.restY; d.vel.y *= -0.3; d.vel.x *= 0.7; d.vel.z *= 0.7; }
+      d.mesh.position.copy(d.pos);
+      d.mesh.rotation.x += d.spin.x * dt; d.mesh.rotation.z += d.spin.z * dt;
+      if (d.pos.y <= d.restY + 0.01 && d.vel.lengthSq() < 0.4) { d.vel.set(0, 0, 0); d.rest = true; }
     }
   }
 

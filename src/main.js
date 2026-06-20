@@ -18,6 +18,7 @@ import { preloadEnemies } from "./game/enemy.js";
 import { preloadOperator } from "./game/operator.js";
 import { preloadVehicles } from "./engine/vehicles.js";
 import { preloadPickups } from "./engine/pickups.js";
+import { Projectile, applyBlast } from "./engine/projectiles.js";
 import { config, mergeConfig } from "./game/config.js";
 import { levels, DEFAULT_LEVEL } from "./game/levels/index.js";
 
@@ -86,6 +87,8 @@ class Game {
     }
 
     this.health = this.cfg.player.maxHealth;
+    this.grenades = this.cfg.player.grenades ?? 5;
+    this._projectiles = [];
     this.shotsFired = 0;
     this.shotsHit = 0;
     this.baseFov = this.cfg.scene.fov;
@@ -188,6 +191,7 @@ class Game {
     } else {
       this.hud.setCounter("Hostiles", this.combat.enemiesLeft);
     }
+    this.hud.setGrenades(this.grenades);
     this.touch.show();
     if (!this._deployed) { this._deployed = true; this.voice.deploy(); }
     this.state = "play";
@@ -225,6 +229,41 @@ class Game {
     this.hud.showLose(sub, title);
     this.audio.lose();
     this.voice.lose();
+  }
+
+  _throwGrenade() {
+    this.grenades--;
+    this.hud.setGrenades(this.grenades);
+    const dir = new THREE.Vector3(); this.camera.getWorldDirection(dir);
+    const pos = this.camera.position.clone().addScaledVector(dir, 0.6); pos.y -= 0.15;
+    const vel = dir.clone().multiplyScalar(17); vel.y += 5; // forward throw with an arc
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0x2c3322, roughness: 0.7, metalness: 0.3 }));
+    const g = new Projectile(this.scene, mesh, pos, vel, { gravity: 18, fuse: 1.5, bounce: 0.35, spin: true });
+    g.radius = 7; g.damage = 320; g.power = 19; g.scale = 0.6;
+    this._projectiles.push(g);
+    this.audio.playBuf?.("clipout", 0.4);
+  }
+
+  _updateProjectiles(dt) {
+    for (let i = this._projectiles.length - 1; i >= 0; i--) {
+      const p = this._projectiles[i];
+      p.update(dt, this.level);
+      // rockets detonate on contact with the flying gunship
+      if (p.detonateOnHit && this.heli && !this.heli.dead) {
+        const dx = this.heli.pos.x - p.pos.x, dy = (this.heli.pos.y || 0) - p.pos.y, dz = this.heli.pos.z - p.pos.z;
+        if (dx * dx + dy * dy + dz * dz < 12) p.done = true;
+      }
+      if (p.done) {
+        const c = p.pos.clone();
+        this.vfx.explosion(c, p.scale || 0.6);
+        this.audio.explosion?.();
+        applyBlast(c, { radius: p.radius || 6, damage: p.damage || 200, power: p.power || 15 }, this.combat.enemies, this.heli, this.level.dynamics);
+        this.hud._shake = Math.max(this.hud._shake, p.scale > 0.7 ? 10 : 6);
+        p.dispose();
+        this._projectiles.splice(i, 1);
+      }
+    }
   }
 
   // bomb goes off: a big rolling explosion (reuses the gunship blast), then the fail screen
@@ -354,8 +393,12 @@ class Game {
     // reload (+ keys reused by the bomb code entry below)
     const presses = this.input.drainPresses();
     if (presses.includes("r")) this.weapon.reload();
+    // grenade (right-click)
+    if (presses.includes("rmb") && this.grenades > 0) this._throwGrenade();
 
     this.combat.update(dt, t, this.camera.position);
+    this._updateProjectiles(dt);
+    this.level.updateDynamics(dt); // explosion-flung props (barrels, etc.)
 
     // ammo pickups — grab a magazine by walking over it (+rounds to reserve)
     if (this.level.pickups) {

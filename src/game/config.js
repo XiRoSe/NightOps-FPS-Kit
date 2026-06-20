@@ -10,6 +10,7 @@ export const config = {
     maxHealth: 100,
     regenInterval: 2, // seconds between health-regen ticks
     regenAmount: 1,   // HP restored per tick
+    grenades: 5,      // grenades carried at start (right-click to throw)
   },
   helicopter: {
     spawnDelay: 5,    // seconds into the fight the enemy gunship arrives

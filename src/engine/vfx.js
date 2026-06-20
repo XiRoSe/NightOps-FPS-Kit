@@ -121,14 +121,15 @@ export class VFX {
     this._flash(point, 0.8, 0xffe0a0);
   }
 
-  // huge "wow" explosion: a big rolling fireball (sustained), shockwave, debris, smoke column
-  explosion(point) {
-    this._fireball(point, 1.0);
+  // huge "wow" explosion: a big rolling fireball (sustained), shockwave, debris, smoke column.
+  // scale < 1 for smaller blasts (grenades / rockets).
+  explosion(point, scale = 1) {
+    this._fireball(point, scale);
     // sustained fire — staggered secondary bursts spreading out + rising
-    setTimeout(() => this._fireball(point.clone().add(new THREE.Vector3((Math.random() - 0.5) * 3, 1 + Math.random() * 2, (Math.random() - 0.5) * 3)), 0.85), 80);
-    setTimeout(() => this._fireball(point.clone().add(new THREE.Vector3((Math.random() - 0.5) * 4, 2 + Math.random() * 2.5, (Math.random() - 0.5) * 4)), 0.7), 190);
+    setTimeout(() => this._fireball(point.clone().add(new THREE.Vector3((Math.random() - 0.5) * 3 * scale, (1 + Math.random() * 2) * scale, (Math.random() - 0.5) * 3 * scale)), 0.85 * scale), 80);
+    setTimeout(() => this._fireball(point.clone().add(new THREE.Vector3((Math.random() - 0.5) * 4 * scale, (2 + Math.random() * 2.5) * scale, (Math.random() - 0.5) * 4 * scale)), 0.7 * scale), 190);
     this._shockwave(point);
-    this._spawnDebris(point, 22);
+    this._spawnDebris(point, Math.round(22 * scale));
   }
 
   _fireball(point, scale) {
