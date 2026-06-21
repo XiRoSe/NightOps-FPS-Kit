@@ -399,11 +399,20 @@ class Game {
   _detonate() {
     if (this.state === "detonate" || this.state === "lose") return;
     this.state = "detonate";
-    this._detT = 1.5; this._detBlast = 0;
+    this._detT = 4.2; this._detBlast = 0; // longer so the player's flight clear out of the compound plays out
     this.defusing = false; this.hud.hideDefuse(); this.hud.showTimer(false); this.hud.setCombatVisible(false);
     this.controller.unlock(); this.audio.stopRotor();
     const b = this.level.bomb; this._bombPos = new THREE.Vector3(b.x, 1, b.z);
+    // one ENORMOUS blast
+    this.vfx.explosion(this._bombPos, 3.2);
     this.audio.explosion?.();
+    this.hud._shake = 48;
+    // hurl the player way up into the sky and back, away from the bomb, tumbling
+    const away = new THREE.Vector3(this.camera.position.x - b.x, 0, this.camera.position.z - b.z);
+    if (away.lengthSq() < 0.5) this.camera.getWorldDirection(away).setY(0).multiplyScalar(-1); // shoved backward if right on it
+    away.y = 0; away.normalize();
+    this._camVel = new THREE.Vector3(away.x * 30, 46, away.z * 30); // hurled high AND far — clear out of the compound
+    this._camSpin = new THREE.Vector3(0.6 + Math.random() * 1.6, (Math.random() - 0.5) * 2.4, (Math.random() - 0.5) * 5); // wild tumble
   }
 
   // bomb objective: countdown, proximity disarm panel, code entry, win/lose
@@ -491,13 +500,24 @@ class Game {
     if (this.state === "detonate") {
       this.input.drainPresses();
       this._detT -= dt;
-      this._detBlast -= dt;
-      if (this._detBlast <= 0) { // rolling cluster of blasts around the bomb
-        this._detBlast = 0.13;
-        const o = this._bombPos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 7, Math.random() * 3, (Math.random() - 0.5) * 7));
-        this.vfx.explosion(o);
+      // fly the player up & away, tumbling, with gravity — far enough to clear the compound
+      if (this._camVel) {
+        this._camVel.y -= 22 * dt;
+        this.camera.position.addScaledVector(this._camVel, dt);
+        if (this.camera.position.y <= 1.6) { this.camera.position.y = 1.6; this._camVel.multiplyScalar(0); this._camSpin.multiplyScalar(0.9); }
+        this.camera.rotation.x += this._camSpin.x * dt;
+        this.camera.rotation.y += this._camSpin.y * dt;
+        this.camera.rotation.z += this._camSpin.z * dt;
       }
-      this.hud._shake = Math.max(this.hud._shake, 12);
+      this._detBlast -= dt;
+      if (this._detBlast <= 0) { // several consecutive blasts: a big cluster around the bomb + booms chasing the player up
+        this._detBlast = 0.1;
+        const o = this._bombPos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 10, Math.random() * 4, (Math.random() - 0.5) * 10));
+        this.vfx.explosion(o, 1.1 + Math.random() * 0.8);
+        // a blast right under the airborne player too, so the explosions visibly hurl them
+        if (this.camera.position.y > 3) this.vfx.explosion(this.camera.position.clone().add(new THREE.Vector3((Math.random() - 0.5) * 4, -2, (Math.random() - 0.5) * 4)), 1.0);
+      }
+      this.hud._shake = Math.max(this.hud._shake, 14);
       if (this._detT <= 0) this._lose("The bomb detonated", 'Mission <span class="hz">Failed</span>');
       return;
     }
