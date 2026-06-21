@@ -52,10 +52,12 @@ export class Combat {
     const muzzle = this.weapon.muzzleWorld; // reused vector, copied immediately by tracer
     if (hits.length) {
       const h = hits[0];
-      let obj = h.object, enemy = null, heli = null;
+      let obj = h.object, enemy = null, heli = null, explosive = null, vehicle = null;
       while (obj) {
         if (obj.userData && obj.userData.enemy) { enemy = obj.userData.enemy; break; }
         if (obj.userData && obj.userData.heli) { heli = obj.userData.heli; break; }
+        if (obj.userData && obj.userData.explosive) { explosive = obj.userData.explosive; break; }
+        if (obj.userData && obj.userData.vehicle) { vehicle = obj.userData.vehicle; break; }
         obj = obj.parent;
       }
       this.vfx.tracer(muzzle, h.point);
@@ -64,9 +66,15 @@ export class Combat {
         this.vfx.hitPuff(h.point);
         this.hooks.onHitmarker?.(enemy.dead);
       } else if (heli && !heli.dead) {
-        heli.takeDamage(this.weapon.damage);
+        heli.takeDamage(1); // 1 unit per rifle shot -> 15-unit gunship = 15 shots
         this.vfx.hitPuff(h.point);
         this.hooks.onHitmarker?.(heli.dead);
+      } else if (explosive && !explosive.exploded) {
+        this.vfx.impact(h.point, this._far.copy(this._dir).multiplyScalar(-1)); // sparks on the hull
+        this.hooks.onExplosive?.(explosive, 1); // 1 unit per shot — main blows it up at 0 HP
+      } else if (vehicle && !vehicle.exploded) {
+        this.vfx.impact(h.point, this._far.copy(this._dir).multiplyScalar(-1)); // sparks on the hull
+        this.hooks.onVehicleHit?.(vehicle, 1); // 1 unit per shot; main blows it up at 0
       } else {
         this._far.copy(this._dir).multiplyScalar(-1); // approx surface normal = back toward shooter
         this.vfx.impact(h.point, this._far);

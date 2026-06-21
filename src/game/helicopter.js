@@ -8,10 +8,11 @@ export async function preloadHeli() { /* using a procedural attack gunship — n
 // Attack helicopter boss: descends from the sky, hovers and strafes while firing,
 // can be shot down, then explodes and crashes.
 export class Helicopter {
-  constructor(scene, level) {
+  constructor(scene, level, sharedLight = null) {
     this.scene = scene;
     this.level = level;
-    this.hp = 780; // tanky gunship (3x)
+    this._sharedLight = sharedLight;
+    this.hp = 15; // HP in "units": 15 rifle shots, or one rocket (15 units)
     this.dead = false;
     this.removable = false;
     this.state = "descend";
@@ -127,8 +128,14 @@ export class Helicopter {
     // The lamp rides the heli; the light + beam live in the scene and are recomputed each frame.
     this._headLocal = new THREE.Vector3(0, -0.4, 2.6); // nose lamp position (group-local)
     const lens = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshBasicMaterial({ color: 0xfff7dc })); lens.position.copy(this._headLocal); this.group.add(lens);
-    this.headLight = new THREE.SpotLight(0xfff4d2, 55, 140, 0.5, 0.5, 1.0); this.headLight.castShadow = false;
-    this.scene.add(this.headLight, this.headLight.target);
+    // Reuse a persistent scene spotlight when one is injected, so spawning the gunship never
+    // changes the scene's light count (which would recompile every material and hitch the frame).
+    if (this._sharedLight) {
+      this.headLight = this._sharedLight; this.headLight.intensity = 55; this._ownsLight = false;
+    } else {
+      this.headLight = new THREE.SpotLight(0xfff4d2, 55, 140, 0.5, 0.5, 1.0); this.headLight.castShadow = false;
+      this.scene.add(this.headLight, this.headLight.target); this._ownsLight = true;
+    }
     this.headBeam = new THREE.Mesh(
       new THREE.ConeGeometry(1, 1, 22, 1, true),
       noOutline(new THREE.MeshBasicMaterial({ color: 0xfff4d2, transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }))

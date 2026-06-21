@@ -79,7 +79,9 @@ const CSS = `
 #defuse .box{ background:var(--panel); border:1px solid var(--line); padding:28px 46px; text-align:center; }
 #defuse .ttl{ font-size:14px; color:var(--hz); letter-spacing:.22em; text-transform:uppercase; }
 #defuse .code{ font-size:56px; font-weight:700; letter-spacing:.32em; font-variant-numeric:tabular-nums; margin:12px 0 6px; }
-#defuse .fb{ font-size:18px; color:var(--ok); letter-spacing:.1em; min-height:24px; }
+#defuse .fb{ font-size:15px; color:var(--ok); letter-spacing:.06em; min-height:24px; line-height:1.7; }
+#defuse .fb b{ color:var(--hz); letter-spacing:.12em; }
+#defuse .fb .bad{ color:#ff6a52; }
 #defuse .hint{ font-size:13px; color:var(--dim); letter-spacing:.12em; margin-top:12px; }
 #ammo .nades{ font-size:13px; color:var(--hz); letter-spacing:.14em; margin-top:5px; }
 /* center action prompt (e.g. gunship inbound -> use the launcher) */
@@ -211,7 +213,7 @@ export class HUD {
     const d = this.root.querySelector("#defuse"); const len = this._defLen || 3;
     let s = ""; for (let i = 0; i < len; i++) s += (i < typed.length ? typed[i] : "_") + (i < len - 1 ? " " : "");
     d.querySelector(".code").textContent = s;
-    d.querySelector(".fb").textContent = feedback || "";
+    d.querySelector(".fb").innerHTML = feedback || "";
   }
   hideDefuse() { this.root.querySelector("#defuse").classList.add("hidden"); }
 

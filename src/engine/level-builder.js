@@ -11,6 +11,8 @@ export class LevelBuilder {
     this.scene = scene;
     this.colliders = [];   // AABB {minX,maxX,minZ,maxZ,top} in the XZ plane
     this.solidMeshes = []; // occluders for bullet raycasts (walls, crates, buildings…)
+    this.explosives = [];  // shootable fuel barrels { mesh, x, z, exploded } that blow up when hit
+    this.vehicles = [];    // shootable vehicles { mesh, x, z, hp, exploded } — tougher, launch + wreck
     this.enemySpawns = []; // { x, z, [y], patrol:[{x,z}], [hp], [speed] }
     this.spots = [];       // floodlights (for the sweep + beam update)
     this.playerSpawn = new THREE.Vector3(0, 0, 16);
@@ -25,7 +27,9 @@ export class LevelBuilder {
 
   collide(x, z, w, d, top = 3.4) {
     // `top` = height you can stand on (low props are mountable, tall walls aren't)
-    this.colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, top });
+    const c = { minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, top };
+    this.colliders.push(c);
+    return c;
   }
 
   // ground + vast surrounding desert + scattered bushes/rocks + dirt patches.
@@ -55,36 +59,53 @@ export class LevelBuilder {
     r.rotation.x = -Math.PI / 2; r.position.set(x, 0.03, z); r.receiveShadow = true; this.scene.add(r);
   }
 
-  // low-poly desert dressing scattered in a ring around the play area
+  // low-poly desert dressing scattered in a ring around the play area.
+  // Uses InstancedMesh: ALL bushes are one draw call and ALL rocks are another (instead of
+  // ~1000+ individual meshes), so the level builds instantly and runtime stays smooth.
   scatterDesert(rMin = 36, rMax = 170, bushes = 70, rocks = 55) {
-    const bushCols = [0x4a5436, 0x3d4a2c, 0x55603f];
-    const rockCols = [0x6b6457, 0x595347, 0x746b5c];
+    const bushCols = [0x4a5436, 0x3d4a2c, 0x55603f].map((c) => new THREE.Color(c));
+    const rockCols = [0x6b6457, 0x595347, 0x746b5c].map((c) => new THREE.Color(c));
     const ring = () => { const a = Math.random() * Math.PI * 2, r = rMin + Math.random() * (rMax - rMin); return [Math.cos(a) * r, Math.sin(a) * r]; };
-    const bush = (x, z, s) => {
-      const g = new THREE.Group();
-      const m = mat(bushCols[Math.floor(Math.random() * 3)], { roughness: 1, flat: true });
+    const dummy = new THREE.Object3D();
+    const instMat = () => noOutline(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, flatShading: true })); // white base; per-instance color tints it
+
+    // ---- rocks: one instanced dodecahedron (unit geo, scaled per instance) ----
+    const rockMesh = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), instMat(), rocks);
+    rockMesh.castShadow = true; rockMesh.receiveShadow = true; rockMesh.frustumCulled = false;
+    for (let i = 0; i < rocks; i++) {
+      const [x, z] = ring(), s = (0.45 + Math.random() * 0.9) * (0.7 + Math.random() * 1.6);
+      dummy.position.set(x, 0.12 * s, z);
+      dummy.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+      dummy.scale.set(s, s * (0.6 + Math.random() * 0.4), s); dummy.updateMatrix();
+      rockMesh.setMatrixAt(i, dummy.matrix); rockMesh.setColorAt(i, rockCols[Math.floor(Math.random() * 3)]);
+    }
+    this.scene.add(rockMesh);
+
+    // ---- bushes: clusters of blobs -> all blobs in one instanced icosahedron ----
+    const blobs = [];
+    for (let i = 0; i < bushes; i++) {
+      const [x, z] = ring(), s = 0.8 + Math.random() * 1.4, col = bushCols[Math.floor(Math.random() * 3)];
       const n = 2 + Math.floor(Math.random() * 3);
-      for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
         const r = (0.35 + Math.random() * 0.5) * s;
-        const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), m);
-        blob.position.set((Math.random() - 0.5) * 0.7 * s, r * 0.55, (Math.random() - 0.5) * 0.7 * s);
-        blob.scale.y = 0.65; blob.castShadow = true; g.add(blob);
+        blobs.push({ x: x + (Math.random() - 0.5) * 0.7 * s, y: r * 0.55, z: z + (Math.random() - 0.5) * 0.7 * s, r, col });
       }
-      g.position.set(x, 0, z); g.rotation.y = Math.random() * 6.28; this.scene.add(g);
-    };
-    const rock = (x, z, s) => {
-      const r = new THREE.Mesh(new THREE.DodecahedronGeometry((0.45 + Math.random() * 0.9) * s, 0), mat(rockCols[Math.floor(Math.random() * 3)], { roughness: 1, flat: true }));
-      r.position.set(x, 0.12 * s, z);
-      r.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
-      r.scale.y = 0.6 + Math.random() * 0.4; r.castShadow = true; r.receiveShadow = true; this.scene.add(r);
-    };
-    for (let i = 0; i < bushes; i++) { const [x, z] = ring(); bush(x, z, 0.8 + Math.random() * 1.4); }
-    for (let i = 0; i < rocks; i++) { const [x, z] = ring(); rock(x, z, 0.7 + Math.random() * 1.6); }
+    }
+    const bushMesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), instMat(), blobs.length);
+    bushMesh.castShadow = true; bushMesh.frustumCulled = false;
+    blobs.forEach((b, i) => {
+      dummy.position.set(b.x, b.y, b.z); dummy.rotation.set(0, Math.random() * 6.28, 0);
+      dummy.scale.set(b.r, b.r * 0.65, b.r); dummy.updateMatrix();
+      bushMesh.setMatrixAt(i, dummy.matrix); bushMesh.setColorAt(i, b.col);
+    });
+    this.scene.add(bushMesh);
   }
 
   wall(x, z, w, d, h = 3.4, color = COLORS.concrete) {
     const span = Math.max(w, d);
     const m = box(w, h, d, color, { mat: texMat(color, "concrete", { repeat: [Math.max(1, Math.round(span / 3.4)), Math.max(1, Math.round(h / 3.4)) + 1], roughness: 0.95 }) });
+    // faint cool emissive so the shadowed/back side of a wall reads as concrete at night, not a flat black silhouette
+    m.material.emissive = new THREE.Color(0x121821); m.material.emissiveIntensity = 1;
     m.position.set(x, h / 2, z); this.scene.add(m);
     this.collide(x, z, w, d, h); this.solidMeshes.push(m);
     const cap = box(w + 0.1, 0.25, d + 0.1, COLORS.metalDark, { roughness: 0.8 });
@@ -108,29 +129,52 @@ export class LevelBuilder {
       const b = makeBarrel(Math.random() > 0.5 ? COLORS.rust : COLORS.olive);
       const bx = x + (i % 2) * 0.85 - 0.4, bz = z + Math.floor(i / 2) * 0.85 - 0.2;
       b.position.set(bx, 0.55, bz); this.scene.add(b);
-      this.collide(bx, bz, 0.8, 0.8, 1.1);
+      const col = this.collide(bx, bz, 0.8, 0.8, 1.1);
       // light enough to be flung by explosions (the impact system pushes it by mass)
-      this._addDynamic(b, 0.55, 1.3);
+      const dyn = this._addDynamic(b, 0.55, 1.3);
+      // shootable explosive (HP in "units": 1 rifle shot = 1, grenade = 5, rocket = 15).
+      // barrels pop in 2-3 shots.
+      const rec = { mesh: b, x: bx, z: bz, hp: 2 + Math.floor(Math.random() * 2), exploded: false, collider: col, dyn };
+      b.traverse((o) => { o.userData.explosive = rec; });
+      b.userData.explosive = rec;
+      this.explosives.push(rec);
+      this.solidMeshes.push(b); // also a bullet occluder so the ray actually hits it
     }
   }
 
   // register a prop that explosions can move; `mass` decides how far it's flung (heavy = barely)
   _addDynamic(mesh, restY, mass) {
     if (!this.dynamics) this.dynamics = [];
-    this.dynamics.push({ mesh, pos: mesh.position.clone(), vel: new THREE.Vector3(), spin: new THREE.Vector3(), restY, mass, rest: true });
+    const d = { mesh, pos: mesh.position.clone(), vel: new THREE.Vector3(), spin: new THREE.Vector3(), restY, mass, rest: true };
+    this.dynamics.push(d);
+    return d;
   }
 
   // integrate any props that an explosion set in motion (gravity, ground, friction, settle)
   updateDynamics(dt) {
     if (!this.dynamics) return;
     for (const d of this.dynamics) {
-      if (d.rest) continue;
+      if (d.rest) {
+        // a launched wreck that has come to rest: ease it flat onto the ground (so its tumble
+        // rotation doesn't leave it half-buried), then fade it out after the delay
+        if (d._vanishT != null) {
+          const k = Math.min(1, dt * 6);
+          d.mesh.rotation.x += (0 - d.mesh.rotation.x) * k;
+          d.mesh.rotation.z += (0 - d.mesh.rotation.z) * k;
+          d.pos.y += (d.restY - d.pos.y) * k; d.mesh.position.y = d.pos.y;
+          d._vanishT -= dt; if (d._vanishT <= 0) { d.mesh.visible = false; d._vanishT = null; }
+        }
+        continue;
+      }
       d.vel.y -= 20 * dt;
       d.pos.addScaledVector(d.vel, dt);
       if (d.pos.y <= d.restY) { d.pos.y = d.restY; d.vel.y *= -0.3; d.vel.x *= 0.7; d.vel.z *= 0.7; }
       d.mesh.position.copy(d.pos);
       d.mesh.rotation.x += d.spin.x * dt; d.mesh.rotation.z += d.spin.z * dt;
-      if (d.pos.y <= d.restY + 0.01 && d.vel.lengthSq() < 0.4) { d.vel.set(0, 0, 0); d.rest = true; }
+      if (d.pos.y <= d.restY + 0.01 && d.vel.lengthSq() < 0.4) {
+        d.vel.set(0, 0, 0); d.rest = true;
+        if (d.vanish && d._vanishT == null) d._vanishT = d.vanishDelay || 2; // start the on-ground fuse
+      }
     }
   }
 
@@ -251,8 +295,15 @@ export class LevelBuilder {
     g.position.set(x, 0, z); g.rotation.y = rot;
     this.scene.add(g); this.solidMeshes.push(g);
     // collider aligned to the long axis (≈4.5m long, ≈2.2m wide)
-    if (Math.abs(Math.cos(rot)) > 0.5) this.collide(x, z, 2.4, 4.6, 2.0);
-    else this.collide(x, z, 4.6, 2.4, 2.0);
+    const col = (Math.abs(Math.cos(rot)) > 0.5) ? this.collide(x, z, 2.4, 4.6, 2.0) : this.collide(x, z, 4.6, 2.4, 2.0);
+    // shootable but tough: takes sustained fire (or one rocket/grenade) before it cooks off,
+    // then gets launched into the air as a heavy dynamic and vanishes shortly after landing.
+    const dyn = this._addDynamic(g, 0, 60); // heavy: ordinary blasts barely nudge it
+    // HP in "units" (1 rifle shot = 1): cars take 7-8 shots
+    const rec = { mesh: g, x, z, hp: 7 + Math.floor(Math.random() * 2), exploded: false, collider: col, dyn };
+    g.traverse((o) => { o.userData.vehicle = rec; });
+    g.userData.vehicle = rec;
+    this.vehicles.push(rec);
   }
 
   // a run of large horizontal fuel tanks on stands (industrial cover), lined up along +X
@@ -264,7 +315,13 @@ export class LevelBuilder {
       for (const sz of [-1.5, 1.5]) { const cap = cyl(0.92, 0.92, 0.12, COLORS.metalDark, 16); cap.rotation.x = Math.PI / 2; cap.position.set(i * 2.4, 1.0, sz); g.add(cap); }
     }
     g.position.set(x, 0, z); this.scene.add(g); this.solidMeshes.push(g);
-    this.collide(x + (n - 1) * 1.2, z, (n - 1) * 2.4 + 1.8, 3.2, 2.0);
+    const cx = x + (n - 1) * 1.2;
+    const col = this.collide(cx, z, (n - 1) * 2.4 + 1.8, 3.2, 2.0);
+    // shootable industrial fuel tanks: tough, and a BIG explosion when they finally go up
+    const rec = { mesh: g, x: cx, z, cy: 1.1, hp: 4, scale: 1.9, radius: 13, damage: 340, exploded: false, collider: col };
+    g.traverse((o) => { o.userData.explosive = rec; });
+    g.userData.explosive = rec;
+    this.explosives.push(rec);
   }
 
   // a decorative chain-link fence run between two points (visual perimeter; not a bullet/▲ blocker)

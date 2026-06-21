@@ -36,13 +36,11 @@ export class Engine {
     g.addColorStop(0.6, "#16273f");
     g.addColorStop(1, "#27394f");
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    // a sparse sprinkle of crisp stars in the upper sky
-    for (let i = 0; i < 260; i++) {
-      const b = Math.random();
-      ctx.globalAlpha = 0.4 + b * 0.6;
-      ctx.fillStyle = "#eaf0ff";
-      const s = b > 0.9 ? 2 : 1;
-      ctx.fillRect(Math.random() * W, Math.random() * H * 0.5, s, s);
+    // faint baked haze of distant stars (the crisp foreground stars are real 3D points, added below)
+    for (let i = 0; i < 140; i++) {
+      ctx.globalAlpha = 0.12 + Math.random() * 0.22;
+      ctx.fillStyle = "#dfe7ff";
+      ctx.fillRect(Math.random() * W, Math.random() * H * 0.5, 1, 1);
     }
     ctx.globalAlpha = 1;
 
@@ -77,12 +75,36 @@ export class Engine {
     moon.position.copy(this.moonDir).multiplyScalar(400);
     moon.scale.setScalar(46); // small, distant moon
     scene.add(moon);
+
+    // crisp 3D starfield — sharp round points on the upper sky dome (much cleaner than baked dots)
+    const dot = document.createElement("canvas"); dot.width = dot.height = 32;
+    const dctx = dot.getContext("2d");
+    const dg = dctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    dg.addColorStop(0, "rgba(255,255,255,1)"); dg.addColorStop(0.4, "rgba(235,242,255,0.9)"); dg.addColorStop(1, "rgba(235,242,255,0)");
+    dctx.fillStyle = dg; dctx.fillRect(0, 0, 32, 32);
+    const dotTex = new THREE.CanvasTexture(dot); dotTex.colorSpace = THREE.SRGBColorSpace;
+    // two layers: most stars small + crisp, a few brighter/bigger — both at fixed pixel size
+    const mkStars = (n, px, op) => {
+      const pos = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        let x, y, z, d2;
+        do { x = Math.random() * 2 - 1; y = Math.random(); z = Math.random() * 2 - 1; d2 = x * x + y * y + z * z; } while (d2 > 1 || y < 0.05);
+        const r = 760 / Math.sqrt(d2);
+        pos[i * 3] = x * r; pos[i * 3 + 1] = y * r; pos[i * 3 + 2] = z * r;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      const m = new THREE.PointsMaterial({ map: dotTex, size: px, sizeAttenuation: false, transparent: true, opacity: op, depthWrite: false, fog: false, blending: THREE.AdditiveBlending });
+      const p = new THREE.Points(geo, m); p.frustumCulled = false; p.renderOrder = -1; scene.add(p);
+    };
+    mkStars(720, 2.4, 0.85);  // the field
+    mkStars(90, 4.5, 0.95);   // a few bright ones
   }
 
   addLights(scene) {
-    const hemi = new THREE.HemisphereLight(0x35435f, 0x080a10, 0.5);
+    const hemi = new THREE.HemisphereLight(0x3b4a68, 0x0a0c12, 0.62);
     scene.add(hemi);
-    const amb = new THREE.AmbientLight(0x223049, 0.4);
+    const amb = new THREE.AmbientLight(0x243352, 0.46);
     scene.add(amb);
     // cool moonlight key with soft shadows
     const moon = new THREE.DirectionalLight(0xaec6ff, 1.7);

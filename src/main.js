@@ -76,13 +76,29 @@ class Game {
     if (this.objType === "defuse") {
       this.bombTime = this.cfg.objective.timeLimit;
       this.codeLen = this.cfg.objective.codeLength || 3;
-      // one solvable code, but it takes a bit of thinking: the product of two 2-digit numbers
-      // (11..29 each -> always a 3-digit answer, 121..841)
-      const a = 11 + Math.floor(Math.random() * 19);
-      const b = 11 + Math.floor(Math.random() * 19);
-      this.bombCode = String(a * b);
-      this.codeLen = this.bombCode.length;
-      this.bombHint = `HINT — code = ${a} × ${b}`;
+      // A self-working "mentalist" lock: the player feeds in a personal number, but the operations
+      // are rigged so the secret cancels out and EVERYONE lands on our exact 3-digit code.
+      //   ((x * m) + m*N) / m - x  ==  N   for any x, any m.
+      const N = 100 + Math.floor(Math.random() * 900); // the real 3-digit code
+      this.bombCode = String(N);
+      this.codeLen = 3;
+      const m = 2 + Math.floor(Math.random() * 2); // 2 or 3
+      const personals = [
+        "the day of the month you were born",
+        "your age",
+        "your house number",
+        "the last two digits of your phone number",
+        "your lucky number",
+      ];
+      const who = personals[Math.floor(Math.random() * personals.length)];
+      this.bombHint =
+        `<b>NEURAL KEY · unique to you</b><br>` +
+        `① think of <b>${who}</b> (keep it secret)<br>` +
+        `② multiply it by ${m}<br>` +
+        `③ add ${m * N}<br>` +
+        `④ divide by ${m}<br>` +
+        `⑤ subtract the number you started with<br>` +
+        `▶ what remains is the 3-digit disarm code`;
       this.maxTries = this.cfg.objective.maxTries || 3;
       this.codeTries = 0;
       this.defusing = false; this.defused = false; this.codeTyped = ""; this.codeFeedback = "";
@@ -121,17 +137,25 @@ class Game {
     this.weapon.buildLauncher(); // launcher model is loaded now
     // build the level now that all prop models are loaded, then seat the camera at the spawn
     this.levelDef.build(this.level);
-    // warm up the procedural gunship build (populates the shared geometry caches) so its
-    // first real spawn mid-fight doesn't hitch the frame
-    const warm = new Helicopter(this.scene, this.level);
-    this.scene.remove(warm.group);
-    if (warm.headLight) this.scene.remove(warm.headLight, warm.headLight.target, warm.headBeam);
-    this.hud.setLoadingProgress(jobs.length + 1, jobs.length + 1);
     this.camera.position.set(this.level.playerSpawn.x, this.controller.eye, this.level.playerSpawn.z);
+    // A persistent gunship searchlight, added to the scene ONCE (intensity 0 when idle). The heli
+    // reuses it, so the scene's light count never changes between spawns -> no shader recompile hitch.
+    this.heliLight = new THREE.SpotLight(0xfff4d2, 0, 140, 0.5, 0.5, 1.0); this.heliLight.castShadow = false;
+    this.scene.add(this.heliLight, this.heliLight.target);
+    // Warm up: build the gunship once (using the shared light), compile shaders + render one hidden
+    // frame so the first real spawn mid-fight is already fully compiled and uploaded.
+    const warm = new Helicopter(this.scene, this.level, this.heliLight);
+    this.engine.renderer.compile(this.scene, this.camera);
+    this.engine.outline.render(this.scene, this.camera);
+    this.scene.remove(warm.group, warm.headBeam);
+    this.heliLight.intensity = 0;
+    this.hud.setLoadingProgress(jobs.length + 1, jobs.length + 1);
     this.combat = new Combat(this.scene, this.camera, this.level, this.weapon, this.vfx, this.audio, {
       onPlayerHit: (dmg) => this._onPlayerHit(dmg),
       onKill: (count, left) => { this.hud.killFeed(this.cfg.messages.hostileDown); this.hud.setHostiles(left); this.voice.enemyDown(); },
       onHitmarker: (killed) => { this.shotsHit++; this.hud.hitmarker(killed); this.audio.hitmarker(killed); },
+      onExplosive: (rec, dmg) => { if (rec.hp != null) { rec.hp -= dmg; if (rec.hp <= 0) this._explodeBarrel(rec); } else this._explodeBarrel(rec); },
+      onVehicleHit: (rec, dmg) => { rec.hp -= dmg; if (rec.hp <= 0) this._explodeVehicle(rec); },
     });
     this.hud.setHostiles(this.combat.enemiesLeft);
     this.state = "start";
@@ -248,6 +272,69 @@ class Game {
     this.audio.playBuf?.("clipout", 0.4);
   }
 
+  // a shot fuel barrel cooks off: big boom, blast damage to nearby enemies, flings props,
+  // hurts the player if too close, and chain-detonates barrels packed right next to it.
+  _explodeBarrel(rec, depth = 0) {
+    if (rec.exploded) return;
+    rec.exploded = true;
+    const c = new THREE.Vector3(rec.x, rec.cy || 0.75, rec.z);
+    // remove the barrel/tank + its collider / dynamic / occluder so nothing lingers
+    this.scene.remove(rec.mesh);
+    const lvl = this.level;
+    const drop = (arr, item) => { if (arr) { const i = arr.indexOf(item); if (i >= 0) arr.splice(i, 1); } };
+    drop(lvl.colliders, rec.collider); drop(lvl.dynamics, rec.dyn); drop(lvl.solidMeshes, rec.mesh);
+    // boom (bigger for fuel tanks via rec.scale / rec.radius)
+    this.vfx.explosion(c, rec.scale || 0.9);
+    this.audio.explosion?.();
+    if (rec.scale > 1.2) this.hud._shake = Math.max(this.hud._shake || 0, 12);
+    const opts = { radius: rec.radius || 7, damage: rec.damage || 240, power: 13 };
+    applyBlast(c, opts, this.combat.enemies, null, lvl.dynamics); // heli takes only unit damage, handled elsewhere
+    // catch the player in the blast if they're standing too close
+    const pd = Math.hypot(this.camera.position.x - rec.x, this.camera.position.z - rec.z);
+    if (pd < opts.radius) this._onPlayerHit(Math.round(opts.damage * 0.22 * (1 - pd / opts.radius)));
+    // chain-react barrels/tanks packed right next to it (a staggered cook-off)
+    if (depth < 5 && lvl.explosives) {
+      for (const other of lvl.explosives) {
+        if (other.exploded) continue;
+        if (Math.hypot(other.x - rec.x, other.z - rec.z) < Math.max(3.0, opts.radius * 0.4)) {
+          setTimeout(() => this._explodeBarrel(other, depth + 1), 110 + Math.random() * 160);
+        }
+      }
+    }
+  }
+
+  // a vehicle takes sustained fire (or a rocket/grenade) then cooks off: a BIG explosion,
+  // the wreck is hurled into the air, tumbles down, and vanishes ~2s after it lands.
+  _explodeVehicle(rec) {
+    if (rec.exploded) return;
+    rec.exploded = true;
+    const c = new THREE.Vector3(rec.x, 1.1, rec.z);
+    const lvl = this.level;
+    // it no longer blocks movement or stops bullets once it's airborne wreckage
+    const drop = (arr, item) => { if (arr) { const i = arr.indexOf(item); if (i >= 0) arr.splice(i, 1); } };
+    drop(lvl.colliders, rec.collider); drop(lvl.solidMeshes, rec.mesh);
+    // bigger boom + heavier screen shake
+    this.vfx.explosion(c, 1.7);
+    this.audio.explosion?.();
+    this.hud._shake = Math.max(this.hud._shake || 0, 14);
+    const opts = { radius: 11, damage: 320, power: 20 };
+    applyBlast(c, opts, this.combat.enemies, null, lvl.dynamics); // heli takes only unit damage, handled elsewhere
+    // launch the wreck itself into the air (override the heavy mass — this is its own blast)
+    if (rec.dyn) {
+      const d = rec.dyn;
+      d.rest = false; d.vanish = true; d.vanishDelay = 2; // vanish 2s after it settles
+      d.vel.set((Math.random() - 0.5) * 7, 13 + Math.random() * 5, (Math.random() - 0.5) * 7);
+      d.spin.set((Math.random() - 0.5) * 6, 0, (Math.random() - 0.5) * 6);
+    }
+    // player caught in the (bigger) blast
+    const pd = Math.hypot(this.camera.position.x - rec.x, this.camera.position.z - rec.z);
+    if (pd < opts.radius) this._onPlayerHit(Math.round(opts.damage * 0.25 * (1 - pd / opts.radius)));
+    // the blast cooks off any fuel barrels nearby too
+    if (lvl.explosives) for (const ex of lvl.explosives) {
+      if (!ex.exploded && Math.hypot(ex.x - rec.x, ex.z - rec.z) < opts.radius) setTimeout(() => this._explodeBarrel(ex), 80 + Math.random() * 160);
+    }
+  }
+
   _fireRocket(t) {
     this.weapon.fireRocket(t);
     const dir = new THREE.Vector3(); this.camera.getWorldDirection(dir);
@@ -284,8 +371,23 @@ class Game {
         const c = p.pos.clone();
         this.vfx.explosion(c, p.scale || 0.6);
         this.audio.explosion?.();
-        applyBlast(c, { radius: p.radius || 6, damage: p.damage || 200, power: p.power || 15 }, this.combat.enemies, this.heli, this.level.dynamics);
-        if (p._heliHit && !p._heliHit.dead) p._heliHit.takeDamage(9999); // a direct rocket destroys the gunship
+        // enemies/props take the big AoE damage; the heli + destructibles use the "unit" scale (below)
+        applyBlast(c, { radius: p.radius || 6, damage: p.damage || 200, power: p.power || 15 }, this.combat.enemies, null, this.level.dynamics);
+        const units = p.isRocket ? 15 : 5; // rocket = 15 units (one-shots the 15-unit gunship), grenade = 5
+        const R = p.radius || 6;
+        // gunship: a direct rocket hit, or being caught in the blast, applies unit damage
+        if (this.heli && !this.heli.dead) {
+          const dx = this.heli.pos.x - c.x, dy = (this.heli.pos.y || 0) - c.y, dz = this.heli.pos.z - c.z;
+          if (p._heliHit || dx * dx + dy * dy + dz * dz < (R + 2) * (R + 2)) this.heli.takeDamage(units);
+        }
+        // barrels + fuel tanks caught in the radius take unit damage; cook off at 0
+        if (this.level.explosives) for (const ex of this.level.explosives) {
+          if (!ex.exploded && Math.hypot(ex.x - c.x, ex.z - c.z) < R) { ex.hp -= units; if (ex.hp <= 0) setTimeout(() => this._explodeBarrel(ex), 40 + Math.random() * 120); }
+        }
+        // vehicles caught in the radius take unit damage; blow up at 0
+        if (this.level.vehicles) for (const v of this.level.vehicles) {
+          if (!v.exploded && Math.hypot(v.x - c.x, v.z - c.z) < R + 1.5) { v.hp -= units; if (v.hp <= 0) this._explodeVehicle(v); }
+        }
         this.hud._shake = Math.max(this.hud._shake, p.scale > 0.7 ? 10 : 6);
         p.dispose();
         this._projectiles.splice(i, 1);
@@ -338,7 +440,7 @@ class Game {
           }
           this.codeTries++;
           if (this.codeTries >= this.maxTries) { this.hud.hideDefuse(); this._detonate(); return; }
-          this.codeFeedback = `WRONG (${this.codeTries}/${this.maxTries}) — ${this.bombHint}`;
+          this.codeFeedback = `<b class="bad">✗ WRONG · ${this.codeTries}/${this.maxTries}</b><br>${this.bombHint}`;
           this.codeTyped = "";
         }
       }
@@ -441,7 +543,9 @@ class Game {
         if (p.taken) continue;
         const dx = this.camera.position.x - p.x, dz = this.camera.position.z - p.z;
         if (dx * dx + dz * dz < p.r * p.r) {
-          p.taken = true; p.group.visible = false;
+          // hide the box + glow, but leave the (now-dark) light in the scene: toggling a light's
+          // visibility changes the scene light count and recompiles every shader (a multi-second freeze).
+          p.taken = true; p.box.visible = false; p.glow.visible = false; p.light.intensity = 0;
           this.weapon.reserve += p.rounds;
           this.audio.playBuf?.("clipin", 0.6);
           this.hud.notify(`+${p.rounds} ROUNDS · MAGAZINE`);
@@ -458,7 +562,7 @@ class Game {
     this._playTime += dt;
     if (!this._heliSpawned && this._playTime >= this._heliDelay) {
       this._heliSpawned = true;
-      this.heli = new Helicopter(this.scene, this.level);
+      this.heli = new Helicopter(this.scene, this.level, this.heliLight);
       this.combat.extraHittables.push(this.heli.hitbox);
       this.audio.startRotor();
       this.hud.killFeed(this.cfg.messages.gunshipInbound);
@@ -470,8 +574,9 @@ class Game {
       });
       if (this.heli.dead && !this._heliKilled) { this._heliKilled = true; this.hud.killFeed(this.cfg.messages.gunshipDown); this.voice.enemyDown(); }
       if (this.heli.removable) {
-        this.scene.remove(this.heli.group);
-        if (this.heli.headLight) this.scene.remove(this.heli.headLight, this.heli.headLight.target, this.heli.headBeam);
+        this.scene.remove(this.heli.group, this.heli.headBeam);
+        this.heliLight.intensity = 0; // keep the shared light in the scene; just switch it off
+        if (this.heli.headLight && this.heli._ownsLight) this.scene.remove(this.heli.headLight, this.heli.headLight.target);
         const i = this.combat.extraHittables.indexOf(this.heli.hitbox);
         if (i >= 0) this.combat.extraHittables.splice(i, 1);
         this.heli = null;
