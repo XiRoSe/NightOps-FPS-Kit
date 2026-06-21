@@ -248,6 +248,8 @@ export class Helicopter {
 
   _fire(playerPos, ctx) {
     this._gunTip.getWorldPosition(this._muzzle);
+    // a tall structure (perimeter wall / building) between the gunship and the player gives cover
+    const blocked = this.level && this.level.segmentBlocked(this.pos.x, this.pos.z, playerPos.x, playerPos.z, 2.8);
     // minigun: a rapid 4-round burst with spread + ground impacts around the player
     for (let i = 0; i < 4; i++) {
       setTimeout(() => {
@@ -257,8 +259,8 @@ export class Helicopter {
         ctx.audio?.heliShot?.();
         this._tmp.set(playerPos.x + (Math.random() - 0.5) * 2.4, playerPos.y - 0.2, playerPos.z + (Math.random() - 0.5) * 2.4);
         ctx.vfx.tracer(this._muzzle, this._tmp);
-        // most rounds kick up dust near the player; some connect
-        if (Math.random() < 0.22) ctx.onPlayerHit(4 + Math.floor(Math.random() * 5));
+        // most rounds kick up dust near the player; some connect — but never through cover
+        if (!blocked && Math.random() < 0.22) ctx.onPlayerHit(4 + Math.floor(Math.random() * 5));
         else { this._tmp.y = 0.1; ctx.vfx.impact(this._tmp, this._up || (this._up = new THREE.Vector3(0, 1, 0))); }
       }, i * 70);
     }
