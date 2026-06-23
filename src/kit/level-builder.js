@@ -584,34 +584,36 @@ export class LevelBuilder {
 
     // distant mountain range: dense OVERLAPPING craggy peaks (leaning apexes) that merge into a continuous
     // silhouette — near rocky band + far big hazy snow band for depth.
-    const mkMountain = (mx, mz, hgt, rad, segn, snowy, col) => {
-      const g = new THREE.Group();
-      const cone = new THREE.Mesh(new THREE.ConeGeometry(rad, hgt, segn), mat(0xffffff, { roughness: 1, flat: true }));
-      const p = cone.geometry.attributes.position, ax = (Math.random() - 0.5) * rad * 0.6, az = (Math.random() - 0.5) * rad * 0.6;
-      const colors = [], cRock = new THREE.Color(col), cSnow = new THREE.Color(0xf2f6f8);
-      const line = snowy ? hgt * 0.18 : hgt * 9; // local-y where snow begins (no snow if not snowy)
-      for (let k = 0; k < p.count; k++) {
-        const lx = p.getX(k), ly = p.getY(k), lz = p.getZ(k);
-        if (ly > hgt * 0.3) { p.setX(k, lx + ax * (ly / hgt)); p.setZ(k, lz + az * (ly / hgt)); }              // lean the apex
-        else { p.setX(k, lx * (0.85 + Math.random() * 0.5)); p.setZ(k, lz * (0.85 + Math.random() * 0.5)); }  // craggy base
-        const wob = (Math.sin(lx * 0.5 + az) + Math.sin(lz * 0.6 - ax)) * hgt * 0.07;                          // jagged, uneven snowline
-        const t = Math.max(0, Math.min(1, (ly - line - wob) / (hgt * 0.08)));
-        const cc = cRock.clone().lerp(cSnow, t);
-        colors.push(cc.r, cc.g, cc.b);
+    // ONE continuous mountain range encircling the island: a wavy ridge (smooth peaks + saddles via
+    // layered sines) with sloped flanks down to the sea + snow on the high parts. Two layers for depth.
+    const mountainRing = (radius, width, maxH, col, snowy, seed) => {
+      const N = 130, posArr = [], colArr = [];
+      const cRock = new THREE.Color(col), cSnow = new THREE.Color(0xf4f7f9), cBase = new THREE.Color(col).multiplyScalar(0.86);
+      const Hf = (a) => {
+        const h = (0.5 + 0.5 * Math.sin(a * 4 + seed)) * 0.5 + (0.5 + 0.5 * Math.sin(a * 9 + seed * 2.3)) * 0.3 + (0.5 + 0.5 * Math.sin(a * 19 + seed * 3.7)) * 0.2;
+        return maxH * (0.32 + 0.68 * h);
+      };
+      const rAt = (a) => radius + Math.sin(a * 6 + seed * 1.5) * width * 0.45; // wavy (non-circular) ridge line
+      const pt = (a, rr, y) => [Math.cos(a) * rr, y, Math.sin(a) * rr];
+      const topCol = (H) => cRock.clone().lerp(cSnow, snowy ? Math.max(0, Math.min(1, (H - maxH * 0.5) / (maxH * 0.32))) : 0);
+      const push = (p, c) => { posArr.push(p[0], p[1], p[2]); colArr.push(c.r, c.g, c.b); };
+      for (let i = 0; i < N; i++) {
+        const a0 = i / N * Math.PI * 2, a1 = (i + 1) / N * Math.PI * 2, r0 = rAt(a0), r1 = rAt(a1), H0 = Hf(a0), H1 = Hf(a1);
+        const t0 = pt(a0, r0, H0), t1 = pt(a1, r1, H1);
+        const inn0 = pt(a0, r0 - width, -4), inn1 = pt(a1, r1 - width, -4), out0 = pt(a0, r0 + width, -4), out1 = pt(a1, r1 + width, -4);
+        const c0 = topCol(H0), c1 = topCol(H1);
+        push(inn0, cBase); push(t0, c0); push(inn1, cBase); push(t0, c0); push(t1, c1); push(inn1, cBase);     // inner flank
+        push(t0, c0); push(out0, cBase); push(t1, c1); push(out0, cBase); push(out1, cBase); push(t1, c1);     // outer flank
       }
-      cone.geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-      cone.geometry.computeVertexNormals();
-      cone.material.vertexColors = true; g.add(cone);
-      g.position.set(mx, hgt / 2 - 6, mz); this.scene.add(g);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(posArr, 3));
+      geo.setAttribute("color", new THREE.Float32BufferAttribute(colArr, 3));
+      geo.computeVertexNormals();
+      const m = new THREE.Mesh(geo, mat(0xffffff, { roughness: 1, flat: true }));
+      m.material.vertexColors = true; m.material.side = THREE.DoubleSide; this.scene.add(m); // double-sided so flanks are lit regardless of winding
     };
-    for (let i = 0; i < 40; i++) { // near band — dense, overlapping
-      const a = i / 40 * Math.PI * 2 + (Math.random() - 0.5) * 0.08, rr = size * 0.55 + Math.random() * 36, hgt = 26 + Math.random() * 44;
-      mkMountain(Math.cos(a) * rr, Math.sin(a) * rr, hgt, 30 + Math.random() * 22, 5 + Math.floor(Math.random() * 3), hgt > 48, 0x6d7669);
-    }
-    for (let i = 0; i < 26; i++) { // far band — big hazy snow peaks for depth
-      const a = i / 26 * Math.PI * 2 + 0.1, rr = size * 0.92 + Math.random() * 200, hgt = 70 + Math.random() * 80;
-      mkMountain(Math.cos(a) * rr, Math.sin(a) * rr, hgt, 55 + Math.random() * 40, 6, true, 0x9aa6b4);
-    }
+    mountainRing(size * 0.62, 62, 60, 0x808a78, true, 1.7);   // near range
+    mountainRing(size * 1.05, 150, 135, 0xa6b2bf, true, 4.3); // far, bigger, hazier range
     for (const L of lakes) { // wadeable shallow-lake surfaces (sit just below the original ground)
       const wy = h(L.x, L.z) + L.depth - 0.28;
       const disc = new THREE.Mesh(new THREE.CircleGeometry(L.r, 28),

@@ -12,6 +12,8 @@ export const CREATURES = {
   sentry: new RiggedAsset("/models/creatures/Enemy_2Legs_Gun.glb", 2.5),  // walking gun-bot
   drone:  new RiggedAsset("/models/creatures/Enemy_Flying_Gun.glb", 1.9), // hovering gun-drone
   heavy:  new RiggedAsset("/models/creatures/Enemy_Large_Gun.glb", 3.6),  // heavy gun-bot
+  // the player's on-screen avatar for the parachute cinematic — a strong armored warrior
+  warrior: new RiggedAsset("/models/creatures/knight.glb", 2.0),
 };
 
 export function preloadCreatures() { return Promise.all(Object.values(CREATURES).map((a) => a.preload())); }

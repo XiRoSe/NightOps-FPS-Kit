@@ -112,7 +112,14 @@ class Game {
     this.weapon.buildLauncher(); // launcher model is loaded now
     // build the level now that all prop models are loaded, then seat the camera at the spawn
     this.levelDef.build(this.level);
-    this.camera.position.set(this.level.playerSpawn.x, this.controller.eye, this.level.playerSpawn.z);
+    const sp = this.level.playerSpawn;
+    if (this.level.terrainHeight && this.cfg.intro && this.cfg.intro.style === "parachute") {
+      // start screen: an aerial vantage over the drop zone (else the camera sits buried under the hill)
+      const gy = this.level.terrainHeight(sp.x, sp.z);
+      this.camera.position.set(sp.x - 26, gy + 72, sp.z - 26); this.camera.lookAt(sp.x, gy + 6, sp.z);
+    } else {
+      this.camera.position.set(sp.x, this.controller.eye, sp.z);
+    }
     // A persistent gunship searchlight, added to the scene ONCE (intensity 0 when idle). The heli
     // reuses it, so the scene's light count never changes between spawns -> no shader recompile hitch.
     this.heliLight = new THREE.SpotLight(0xfff4d2, 0, 140, 0.5, 0.5, 1.0); this.heliLight.castShadow = false;
