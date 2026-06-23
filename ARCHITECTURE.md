@@ -1,83 +1,85 @@
 # Architecture
 
-A small, flat FPS kit. Two folders draw the line between **reusable infrastructure** and
-**this game's content**. No frameworks, no entity-component system — just plain ES modules and
-one config object.
+A small, flat FPS kit. Three tiers draw clean lines from generic infrastructure to this game's
+content. No frameworks, no entity-component system — just plain ES modules and one config object.
 
 ```
 src/
-  engine/    reusable systems (render, controller, weapon, projectiles, vfx, level toolkit, hud, input, audio)
-  game/      content + rules: actors (enemy, helicopter, operator), config, and one module per level
-  main.js    the runner: picks a level, wires engine + game, owns the state machine + per-frame loop
-public/      static assets (GLB models, audio) served as-is
-server.js    tiny static server for production (serves dist/)
+  engine/   generic, content-agnostic systems (render, controller, input, weapon viewmodel,
+            projectiles+blast, vfx, hud, audio, assets, primitives, laser-sight, postfx)
+  kit/      the military-FPS TOOLKIT built on the engine: the level-builder, the destructible
+            system, and content/ (the vehicle/pickup/weapon asset catalogs)
+  game/     THIS game only: config, combat, intro, actors/ (enemy, helicopter, operator),
+            objectives/ (defuse, exfil), levels/ (one module per level + a registry)
+  device.js mobile gate (desktop/laptop only, for now)
+  main.js   the runner: picks a level, wires the tiers, owns the state machine + per-frame loop
+public/     static assets (GLB models, audio) served as-is
+server.js   tiny static server for production (serves dist/)
 ```
 
-This is a **game-specific** kit (a night military-FPS), not a generic engine — the toolkit knows
-about walls, towers, bunkers, vehicles, fuel tanks and desert dressing on purpose.
+**The dependency rule (enforceable):** `engine/` imports nothing from `kit/` or `game/`;
+`kit/` may use `engine/`; `game/` may use both. That gives two honest reuse tiers — take just the
+`engine/`, or the whole `kit/` — and keeps the layers from rotting into each other.
 
-## engine/ (reusable — never imports from `game/`)
+## engine/ (generic)
 
 | File | Role |
 |------|------|
-| `engine.js`        | renderer, baked night skybox + IBL, starfield, lights/shadows, cel-shade **OutlineEffect**, the frame loop |
-| `actor.js`         | `RiggedAsset` (skinned GLB → cloned scaled instances + bone cache) and `PropAsset` (static GLB) |
-| `controller.js`    | first-person controller — pointer-lock look, walk/sprint/jump/duck, headbob, AABB collision vs `level.colliders` |
-| `weapon.js`        | viewmodels (rifle + missile launcher), recoil, muzzle flash, reload, `toggle()` |
-| `weapons.js`       | weapon-model asset loaders (the launcher GLB) |
-| `projectiles.js`   | `Projectile` (ballistic, gravity, bounce, fuse, wall/structure hit) + the **blast system** (`blastAt`, `applyBlast`) — distance falloff, damage, knockback, mass-aware prop shove |
-| `vfx.js`           | pooled tracers / sparks / dust / decals / shockwave rings / debris / explosions (no per-shot allocations) |
-| `pickups.js`       | pickup asset loaders (ammo magazine) |
-| `level-builder.js` | **the level toolkit** — `wall/building/tower/bunker/vehicle/fuelTanks/barrels/sandbags/floodlight/ammo/bomb/objective/scatterDesert/...`, the collider list, the dynamics integrator, and `segmentBlocked` (line-of-sight) |
-| `builders.js`      | geometry/material helpers, `COLORS`, canvas textures, `noOutline()` |
+| `engine.js`        | renderer, baked night skybox + IBL, starfield, lights/shadows, cel-shade **OutlineEffect**, frame loop |
+| `assets.js`        | `RiggedAsset` (skinned GLB → cloned scaled instances + bone cache) and `PropAsset` (static GLB) |
+| `primitives.js`    | geometry/material helpers, `COLORS`, canvas textures, prop builders (crate/barrel/…), `noOutline()` |
+| `controller.js`    | first-person controller — look, walk/sprint/jump/duck, headbob, AABB collision vs `level.colliders` |
+| `projectiles.js`   | `Projectile` (ballistic, gravity, bounce, fuse, wall/structure hit) + the **blast system** (`blastAt`, `applyBlast`) |
+| `vfx.js`           | pooled tracers / sparks / dust / decals / shockwave rings / debris / explosions (no per-shot allocs) |
+| `laser-sight.js`   | the aim beam as a reusable class (caller supplies targets + visibility) |
 | `input.js`         | keyboard + mouse state, read by **physical key** (`event.code`) so any keyboard layout works |
 | `touch.js`         | mobile dual-stick touch controls (present but gated off for now) |
 | `audio.js`, `voice.js` | synth + sampled SFX, looping rotor, radio callouts |
-| `hud.js`           | tactical HUD (panels, kill-feed, hitmarkers), the bomb-defuse panel, start/pause/win/lose overlays |
+| `hud.js`           | tactical HUD, the bomb-defuse panel, start/pause/win/lose overlays |
 | `postfx.js`        | small post helpers |
 
-**Rule:** nothing in `engine/` imports from `game/`. If a module references *this* map, *this*
-roster, or *these* rules, it belongs in `game/`. (The reverse is fine: `game/` imports freely from `engine/`.)
+## kit/ (the military-FPS toolkit, built on engine)
+
+| File | Role |
+|------|------|
+| `weapon.js`        | player viewmodels (rifle + missile launcher): recoil, muzzle flash, reload, `toggle()` |
+| `level-builder.js` | **the level toolkit** — `wall/building/tower/bunker/vehicle/fuelTanks/barrels/floodlight/ammo/bomb/scatterDesert/…`, the collider list, the dynamics integrator, and `segmentBlocked` (line-of-sight). Reads destructible HP from injected `balance`. |
+| `destructibles.js` | shootable barrels/tanks/vehicles: unit-damage explosions, launch-into-air wrecks, chain cook-offs (decoupled via a ctx of live refs) |
+| `content/`         | this game's asset catalogs — `vehicles.js`, `pickups.js`, `weapons.js` (thin `PropAsset` loaders) |
 
 ## game/ (this game)
 
 | File | Role |
 |------|------|
-| `config.js`        | **the tuning/rules layer** — health/regen, FOV, fog, grenade count, gunship timing, intro, objective type, HUD messages. `mergeConfig(base, over)` lets each level override one level deep. |
-| `levels/`          | one module per level + an `index.js` **registry**. Each module is `{ id, name, config?, build(b) }`. |
-| `levels/index.js`  | the `levels` map + `DEFAULT_LEVEL`. Add a level here to make it selectable via `?level=<id>`. |
-| `enemy.js`         | soldier AI (patrol → see → run-to-cover → peek → burst-fire), obstacle avoidance, blast-death; built on `RiggedAsset` |
-| `helicopter.js`    | attack gunship boss (descend → hover/strafe → minigun, LOS-aware) and the procedural airframe |
-| `operator.js`      | the player's body used during the intro |
+| `config.js`        | the tuning/rules layer — health/fog/fov, gunship timing, intro, objective type, **`balance`** (all gameplay numbers), HUD messages. `mergeConfig(base, over)` lets levels override one level deep. |
+| `combat.js`        | the shooting layer: builds the enemy roster, runs the hitscan ray, routes hits (enemy / heli / destructible) via hooks to `main.js` |
+| `actors/`          | `enemy.js` (cover/peek AI), `helicopter.js` (gunship boss), `operator.js` (intro body) |
+| `objectives/`      | `defuse.js`, `exfil.js`, and `index.js` (`makeObjective(type, game)`); each is `{ brief(), onPlayStart(), update(dt,t,presses) }` and decides the win/lose conditions |
 | `intro.js`         | cinematic fast-rope insertion sequence |
-| `combat.js`        | the shooting layer: builds the enemy roster, runs the hitscan ray, routes hits (enemy / heli / destructible) via hooks back to `main.js` |
+| `levels/`          | one module per level (`{ id, name, config?, build(b) }`) + `index.js` (the `levels` map + `DEFAULT_LEVEL`) |
 
-## main.js (the runner)
+## main.js (the runner, ~460 lines)
 
-- Boots the engine, preloads assets (progress bar + a gunship "warm-up" shader compile so the first
-  spawn doesn't hitch), builds the chosen level, seats the player.
-- Owns the **state machine** (`loading → start → intro → play → win/lose/detonate`) and the
-  per-frame `update(dt, t)`.
-- Owns everything that spans engine + game per frame: firing, grenades & rockets (`_updateProjectiles`),
-  the **blast → destructible** routing, the bomb objective (`_updateDefuse` / `_detonate`), the
-  helicopter, HUD sync.
-- Exposes `window.__game` for debugging and in-browser verification (see [AGENTS.md](AGENTS.md)).
+Boots the engine, preloads assets (progress bar + a gunship warm-up shader compile so the first
+spawn doesn't hitch), builds the chosen level, seats the player. Owns the **state machine**
+(`loading → start → intro → play → win/lose/detonate`) and the per-frame `update(dt, t)`: movement,
+firing, grenades & rockets, the bomb-detonation cinematic, HUD sync — and **delegates** the objective
+(`this.objective.update`), the destructibles (`this.destructibles`), and the laser (`this.laser`) to
+their modules. Exposes `window.__game` for debugging and in-browser verification (see [AGENTS.md](AGENTS.md)).
 
 ## The two damage scales (don't mix them)
 
-- **Enemy/player scale** — rifle does `weapon.damage` (≈34); enemies have ~100 HP. Grenades/rockets do
-  big AoE damage to enemies via `applyBlast`.
-- **Destructible/gunship "unit" scale** — rifle = **1**, grenade = **5**, rocket = **15**. Object HP is
-  in units (barrels 2–3, fuel tanks 4, cars 7–8, gunship 15). Intentionally separate so you can tune
-  "how many shots to blow up a car" without disturbing enemy balance.
+- **Enemy/player scale** — rifle does ~34 dmg; enemies have ~100 HP. Grenades/rockets do big AoE damage
+  to enemies via `applyBlast`.
+- **Destructible/gunship "unit" scale** — rifle = 1, grenade = 5, rocket = 15. Object HP is in units
+  (barrels 2–3, fuel tanks 4, cars 7–8, gunship 15). All of it lives in `config.balance`.
 
 ## Coordinates & collision
 
-- XZ is the ground plane, +Y up. Level units ≈ meters.
-- `level.colliders` are XZ AABBs `{minX,maxX,minZ,maxZ,top}` — `top` is the height you can stand on
-  (low props are mountable, tall walls aren't). The controller, enemy movement, projectiles and
-  line-of-sight (`segmentBlocked`) all read this one list, so registering a collider is what makes a
-  thing solid for *everything* at once.
+XZ is the ground plane, +Y up; units ≈ meters. `level.colliders` are XZ AABBs
+`{minX,maxX,minZ,maxZ,top}` (`top` = the height you can stand on). The controller, enemy movement,
+projectiles and line-of-sight (`segmentBlocked`) all read this one list — registering a collider is
+what makes a thing solid for *everything* at once.
 
 ## Where to go next
 

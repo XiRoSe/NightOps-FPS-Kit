@@ -1,5 +1,10 @@
 # Refactor & Organization Plan
 
+> **Status: implemented.** Phases 0–4 are done — tooling (`.gitattributes`/`.editorconfig`/`jsconfig`),
+> the `engine`/`kit`/`game` restructure, `config.balance`, the `main.js` decomposition (device,
+> laser-sight, destructibles, objectives — 664→~460 lines), and the doc sync. Phase 5 (CI + CONTRIBUTING)
+> follows. Kept as a record of the intent and the verification approach.
+
 A plan to **fix and organize the existing code** so NightOps FPS Kit is clean for others to build
 on. **No new gameplay features** — every step is "same behavior, better shape." Each phase is
 independently shippable, ordered so earlier phases de-risk later ones.

@@ -7,10 +7,11 @@ the content APIs.
 
 ## Mental model
 
-- **`engine/` is reusable, `game/` is this game's content.** Hard rule: **`engine/` must never import
-  from `game/`.** If code references this map/roster/rules, it belongs in `game/`.
-- It's a **game-specific kit**, not a generic engine — adding a level/weapon/enemy is *data + a small
-  module*, not new abstraction layers. Keep it flat.
+- **Three tiers:** `engine/` (generic) → `kit/` (the military-FPS toolkit) → `game/` (this game).
+  Hard rule: **`engine/` imports nothing from `kit/` or `game/`; `kit/` may use `engine/`; `game/` may
+  use both.** If code references this map/roster/rules, it belongs in `game/`.
+- It's a **game-specific kit**, not a generic engine — adding a level/weapon/enemy/objective is *data +
+  a small module*, not new abstraction layers. Keep it flat.
 - `main.js` is the runner: state machine (`loading → start → intro → play → win/lose/detonate`) and
   the per-frame `update(dt, t)`. Anything spanning engine+game per frame lives here.
 
@@ -71,11 +72,11 @@ a blast. When you do screenshot, set the camera explicitly and call `g.engine.ou
 ## Adding content (pointers)
 
 - **Level** → a module in `src/game/levels/` + register in `levels/index.js`. See BUILDING.md §1.
-- **Tuning** → `src/game/config.js` (+ per-level `config` overrides via `mergeConfig`). §2.
-- **Objective** → branch on `config.objective.type` in `main.js`. §3.
-- **Weapon** → viewmodel in `engine/weapon.js` + key in `main.js` + hitscan (`combat`) or `Projectile`. §4.
+- **Tuning** → `src/game/config.js` `balance` (+ per-level `config` overrides via `mergeConfig`). §2.
+- **Objective** → a module in `src/game/objectives/` + a line in its `index.js` registry. §3.
+- **Weapon** → viewmodel in `kit/weapon.js` + key in `main.js` + hitscan (`combat`) or `Projectile`. §4.
 - **Destructible** → tag `userData.explosive`/`vehicle`, push to `level.explosives`/`vehicles`, hook in
-  `combat.js` → `main.js`. §5.
+  `combat.js` → `kit/destructibles.js`. §5.
 
 ## Conventions for commits/deploys
 
