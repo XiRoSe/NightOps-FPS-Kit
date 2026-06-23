@@ -512,11 +512,13 @@ export class LevelBuilder {
     }
     const roof = box(W + 4, 1.1, W + 4, stoneDark, { roughness: 0.9 }); roof.position.set(x, gy + baseH + colH + 0.55, z); roof.castShadow = true; this.scene.add(roof);
     const cap = box(W + 1, 0.7, W + 1, stone, { roughness: 0.9 }); cap.position.set(x, gy + baseH + colH + 1.4, z); this.scene.add(cap);
-    const steps = Math.ceil(baseH / 0.3); // grand front staircase (+z), walkable
+    // grand front staircase (+z) that RISES toward the temple, its top step meeting the floor edge
+    const steps = Math.ceil(baseH / 0.3), floorEdge = z + (W + 2) / 2;
     for (let i = 1; i <= steps; i++) {
-      const sy = i * 0.3, sz = z + h + 1.5 + i * 0.7, st = box(W * 0.55, 0.2, 0.74, stone, { roughness: 0.92 });
-      st.position.set(x, gy + sy - 0.1, sz); this.scene.add(st);
-      const sc = this.collide(x, sz, W * 0.55, 0.74, sy); sc.baseY = gy;
+      const sy = i * 0.3, sz = floorEdge + (steps - i) * 0.72 + 0.3; // high steps near the base, low steps farthest out
+      const st = box(W * 0.55, 0.24, 0.95, stone, { roughness: 0.92 });
+      st.position.set(x, gy + sy - 0.12, sz); this.scene.add(st);
+      const sc = this.collide(x, sz, W * 0.55, 0.95, sy); sc.baseY = gy;
     }
     // glowing centerpiece on the floor inside (emissive obelisk + halo, no per-object light)
     const cg = new THREE.Group(); cg.position.set(x, gy + baseH, z);
