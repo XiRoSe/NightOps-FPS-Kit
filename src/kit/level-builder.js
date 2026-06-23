@@ -495,6 +495,39 @@ export class LevelBuilder {
   }
 
   // clustered forests with clearings between (rather than a uniform sprinkle)
+  // A grand open temple/palace the player can climb into: a stepped stone base reached by a front
+  // staircase, a ring of columns under a roof, and a glowing centerpiece inside. Terrain-seated.
+  palace(x, z) {
+    const gy = this._groundY(x, z), W = 16, baseH = 3.2, colH = 7, stone = 0xd9d0ba, stoneDark = 0xb6ab93;
+    for (let s = 0; s < 3; s++) { // stepped base
+      const sw = W + 6 - s * 2, b = box(sw, baseH / 3 + 0.08, sw, s < 2 ? stoneDark : stone, { roughness: 0.92 });
+      b.position.set(x, gy + (s + 0.5) * (baseH / 3), z); b.receiveShadow = true; this.scene.add(b);
+    }
+    const fc = this.collide(x, z, W + 1, W + 1, baseH); fc.baseY = gy; // floor is standable
+    const h = W / 2, colXY = [];
+    for (let t = 0; t <= 1.001; t += 0.25) { const p = -h + t * W; colXY.push([p, -h], [p, h], [-h, p], [h, p]); }
+    for (const [dx, dz] of colXY) { // perimeter columns (gaps wide enough to walk between)
+      const c = cyl(0.45, 0.5, colH, stone, 9, { roughness: 0.9 }); c.position.set(x + dx, gy + baseH + colH / 2, z + dz); c.castShadow = true; this.scene.add(c);
+      const cc = this.collide(x + dx, z + dz, 1.1, 1.1, baseH + colH); cc.baseY = gy;
+    }
+    const roof = box(W + 4, 1.1, W + 4, stoneDark, { roughness: 0.9 }); roof.position.set(x, gy + baseH + colH + 0.55, z); roof.castShadow = true; this.scene.add(roof);
+    const cap = box(W + 1, 0.7, W + 1, stone, { roughness: 0.9 }); cap.position.set(x, gy + baseH + colH + 1.4, z); this.scene.add(cap);
+    const steps = Math.ceil(baseH / 0.3); // grand front staircase (+z), walkable
+    for (let i = 1; i <= steps; i++) {
+      const sy = i * 0.3, sz = z + h + 1.5 + i * 0.7, st = box(W * 0.55, 0.2, 0.74, stone, { roughness: 0.92 });
+      st.position.set(x, gy + sy - 0.1, sz); this.scene.add(st);
+      const sc = this.collide(x, sz, W * 0.55, 0.74, sy); sc.baseY = gy;
+    }
+    // glowing centerpiece on the floor inside (emissive obelisk + halo, no per-object light)
+    const cg = new THREE.Group(); cg.position.set(x, gy + baseH, z);
+    const obl = new THREE.Mesh(new THREE.ConeGeometry(0.6, 3.2, 4), noOutline(new THREE.MeshStandardMaterial({ color: 0x9fe8ff, emissive: 0x3aa0ff, emissiveIntensity: 2.2 })));
+    obl.position.y = 1.8; cg.add(obl);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this._glowTex(), color: 0x6fd0ff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    halo.scale.setScalar(5); halo.position.y = 2; cg.add(halo);
+    this.scene.add(cg);
+    return { x, z, top: gy + baseH };
+  }
+
   scatterTrees(n, rMin, rMax) {
     const clusters = 13;
     for (let cI = 0; cI < clusters; cI++) {

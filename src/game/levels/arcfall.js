@@ -19,7 +19,8 @@ export const arcfall = {
     b.islandTerrain({ size: 460 });   // hills → beach → sea → distant mountains
     b.scatterTrees(260, 20, 198);     // thick GLB forest (birch + palms), seated on the terrain
     b.scatterRocks(55, 26, 198);      // GLB rocks (cover + dressing)
-    b.lookout(28, -46); b.lookout(-58, 30); // climbable lookouts — high ground to spot arcs + snipe
+    b.palace(40, -64);          // grand temple you can climb the stairs into (glowing relic inside)
+    b.lookout(-58, 30);         // a climbable lookout for high ground / sniping
     b.car(9, 13, "racefuture"); b.car(-12, 7, "sportscar"); b.car(2, -15, "race"); // fast sports cars in the clear drop zone (press E)
 
     // the 12 lost arcs, scattered wide (each beams to the sky so it's findable from a hilltop)
