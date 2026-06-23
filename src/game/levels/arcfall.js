@@ -21,6 +21,10 @@ export const arcfall = {
     b.scatterRocks(55, 26, 198);      // GLB rocks (cover + dressing)
     b.palace(40, -64);          // grand temple you can climb the stairs into (glowing relic inside)
     b.lookout(-58, 30);         // a climbable lookout for high ground / sniping
+    // structures from across the ages, scattered for landmarks + cover
+    b.ruin(-44, 82); b.ruin(76, 44);
+    b.hut(-92, 8); b.hut(52, -92); b.hut(-18, -82);
+    b.obelisk(112, -52); b.obelisk(-112, -12); b.obelisk(20, 110);
     b.car(9, 13, "racefuture"); b.car(-12, 7, "sportscar"); b.car(2, -15, "race"); // fast sports cars in the clear drop zone (press E)
 
     // the 12 lost arcs, scattered wide (each beams to the sky so it's findable from a hilltop)

@@ -492,6 +492,36 @@ export class LevelBuilder {
   }
 
   // clustered forests with clearings between (rather than a uniform sprinkle)
+  // ancient ruins: a stone slab with broken columns of varying height + a fallen lintel (terrain-seated)
+  ruin(x, z) {
+    const gy = this._groundY(x, z), stone = 0xcabfa6;
+    const slab = box(8, 0.4, 8, 0xb6ab93, { roughness: 0.95 }); slab.position.set(x, gy + 0.2, z); slab.receiveShadow = true; this.scene.add(slab);
+    (this.collide(x, z, 8, 8, 0.4)).baseY = gy;
+    for (const [dx, dz] of [[-3, -3], [3, -3], [-3, 3], [3, 3], [0, -3.2], [-3.2, 0.5]]) {
+      const h = 1.4 + Math.random() * 3.2, c = cyl(0.4, 0.46, h, stone, 8, { roughness: 0.9 });
+      c.position.set(x + dx, gy + 0.4 + h / 2, z + dz); c.castShadow = true; this.scene.add(c);
+      (this.collide(x + dx, z + dz, 1, 1, 0.4 + h)).baseY = gy;
+    }
+    const lintel = box(3.6, 0.5, 0.7, stone, { roughness: 0.9 }); lintel.position.set(x + 1, gy + 0.65, z - 3); lintel.rotation.y = 0.3; lintel.castShadow = true; this.scene.add(lintel);
+  }
+
+  // a primitive round hut (stone walls + thatch cone roof), terrain-seated
+  hut(x, z) {
+    const gy = this._groundY(x, z), r = 2.6, h = 2.6;
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 10), mat(0x8a6f4e, { roughness: 0.95 })); body.position.set(x, gy + h / 2, z); body.castShadow = true; this.scene.add(body);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(r + 0.55, 2.1, 10), mat(0x6b4a2e, { roughness: 0.95, flat: true })); roof.position.set(x, gy + h + 1.05, z); roof.castShadow = true; this.scene.add(roof);
+    (this.collide(x, z, r * 2, r * 2, h + 2)).baseY = gy;
+  }
+
+  // a tall tapered obelisk monument with a gilded tip, terrain-seated
+  obelisk(x, z) {
+    const gy = this._groundY(x, z), stone = 0xc2b79c;
+    const base = box(2.2, 0.6, 2.2, 0xa89c80, { roughness: 0.95 }); base.position.set(x, gy + 0.3, z); this.scene.add(base);
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.72, 7, 4), mat(stone, { roughness: 0.9, flat: true })); shaft.position.set(x, gy + 4.1, z); shaft.rotation.y = Math.PI / 4; shaft.castShadow = true; this.scene.add(shaft);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.46, 1, 4), mat(0xd9b24a, { roughness: 0.5, flat: true })); tip.position.set(x, gy + 8.1, z); tip.rotation.y = Math.PI / 4; this.scene.add(tip);
+    (this.collide(x, z, 2.2, 2.2, 8)).baseY = gy;
+  }
+
   // A grand open temple/palace the player can climb into: a stepped stone base reached by a front
   // staircase, a ring of columns under a roof, and a glowing centerpiece inside. Terrain-seated.
   palace(x, z) {
