@@ -28,6 +28,8 @@ export class Enemy {
     this.yaw = Math.random() * Math.PI * 2;
     this.speed = spawn.speed || 2.4;  // per-spawn tuning (tougher/faster guards)
     this.hp = spawn.hp || 100;
+    this.sith = !!spawn.sith; this.tint = spawn.tint || null; this.meleeDmg = spawn.meleeDmg || 16; // Sith: dark robes, lightsaber, charges + slashes
+    if (this.sith) this.speed = spawn.speed || 4.4;
     this.dead = false;
     this.counted = false;
     this.alertT = 0;
@@ -65,6 +67,7 @@ export class Enemy {
     this.bones = inst.bones;
     this.model.rotation.y = Math.PI; // model's front is -Z; face it along the group's +Z (toward target)
     this.model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = true; } });
+    if (this.tint) this.model.traverse((o) => { if (o.isMesh && o.material && o.material.color) { o.material = o.material.clone(); o.material.color.lerp(new THREE.Color(this.tint), 0.85); } }); // clone troopers (white) / Sith (dark robes)
     this.group.add(this.model);
 
     // animation mixer + clips
@@ -107,6 +110,15 @@ export class Enemy {
       rifle.position.set(0.16, 1.34, 0.34); this.group.add(rifle);
     }
 
+    // SITH: hide the gun, mount a glowing red lightsaber in the same hand
+    if (this.sith) {
+      rifle.children.forEach((c) => { if (c !== this._gunTip) c.visible = false; });
+      const hilt = box(0.05, 0.05, 0.2, 0x9aa0a8, { metalness: 0.85, roughness: 0.3 }); hilt.position.set(0, 0, 0.05); rifle.add(hilt);
+      const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.035, 2.3, 8), noOutline(new THREE.MeshBasicMaterial({ color: 0xff2a16 }))); blade.rotation.x = Math.PI / 2; blade.position.set(0, 0, 1.35); rifle.add(blade);
+      const glow = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 2.3, 8), noOutline(new THREE.MeshBasicMaterial({ color: 0xff6a4a, transparent: true, opacity: 0.34 }))); glow.rotation.x = Math.PI / 2; glow.position.set(0, 0, 1.35); rifle.add(glow);
+      this._saber = rifle;
+    }
+
 
     // invisible but raycastable hitbox
     this.hitbox = new THREE.Mesh(
@@ -132,6 +144,28 @@ export class Enemy {
     this.state = "alert";
     this.alertT = 5;
     if (this.hp <= 0) this._die();
+  }
+
+  // Sith: charge the player with the lightsaber, slash in melee; roam when unaware
+  _sithUpdate(dt, playerPos, ctx, engaged) {
+    if (this.level.terrainHeight && !this._raised) this.baseY = this.level.terrainHeight(this.pos.x, this.pos.z);
+    const dx = playerPos.x - this.pos.x, dz = playerPos.z - this.pos.z, dist = Math.hypot(dx, dz) || 1;
+    this._slashT = (this._slashT || 0) - dt; this._swing = Math.max(0, (this._swing || 0) - dt);
+    const move = (tx, tz, sp) => { const mx = tx - this.pos.x, mz = tz - this.pos.z, d = Math.hypot(mx, mz) || 1, s = sp * dt; const nx = this.pos.x + (mx / d) * s, nz = this.pos.z + (mz / d) * s; if (!this._blocked(nx, this.pos.z)) this.pos.x = nx; if (!this._blocked(this.pos.x, nz)) this.pos.z = nz; };
+    if (engaged && dist > 2.6) { this.yaw = Math.atan2(dx, dz); move(playerPos.x, playerPos.z, this.speed * 1.5); this._play(this.actions.Run ? "Run" : "Walk"); }
+    else if (engaged) { // in range — slash
+      this.yaw = Math.atan2(dx, dz);
+      this._play(this.actions.Attack ? "Attack" : (this.actions.Idle ? "Idle" : "Walk"), 0.1);
+      if (this._slashT <= 0) { this._slashT = 0.8; this._swing = 0.28; if (!ctx.airborne) ctx.onPlayerHit?.(this.meleeDmg + Math.floor(Math.random() * 8)); ctx.audio?.whoosh?.(); }
+    } else { // roam
+      if (!this._home) this._home = { x: this.pos.x, z: this.pos.z };
+      this._roamCd = (this._roamCd || 0) - dt;
+      if (!this._roam || this._roamCd <= 0 || Math.hypot(this._roam.x - this.pos.x, this._roam.z - this.pos.z) < 2) { const a = Math.random() * 6.28, r = 6 + Math.random() * 18; this._roam = { x: this._home.x + Math.cos(a) * r, z: this._home.z + Math.sin(a) * r }; this._roamCd = 3 + Math.random() * 4; }
+      this.yaw = Math.atan2(this._roam.x - this.pos.x, this._roam.z - this.pos.z); move(this._roam.x, this._roam.z, this.speed * 0.5); this._play(this.actions.Walk ? "Walk" : "Run");
+    }
+    if (this._saber) this._saber.rotation.z = -(this._swing / 0.28) * 1.7; // overhead slash flourish
+    this.group.position.set(this.pos.x, this.baseY, this.pos.z);
+    this.group.rotation.y = this.yaw;
   }
 
   _die() {
@@ -280,6 +314,7 @@ export class Enemy {
     const see = this.canSee(playerPos);
     if (see) this.alertT = 8; else this.alertT -= dt; // stay engaged through hide cycles
     const engaged = this.alertT > 0;
+    if (this.sith) { this._sithUpdate(dt, playerPos, ctx, engaged); return; } // lightsaber charger — own movement/melee
     this._applyGun();   // rifle held in the right hand via the natural animation (clean, reliable)
 
     // fire in bursts of 5 shots, with 2-5s between bursts; raise into the aim ~1s before + during a burst

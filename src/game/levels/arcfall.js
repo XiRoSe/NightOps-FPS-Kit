@@ -31,6 +31,8 @@ export const arcfall = {
     b.sectionWalls(92, 54, 58, 4);     // NE · IRON LEGION — ancient crenellated walls (a walled war-city)
     b.sectionPylons(66, -44, 48, 3);   // SE · HOLLOW WATCH — glowing sentinel pylons
     b.sectionWalls(-84, -40, 48, 3);   // SW · VAULT GARRISON — ancient fort walls
+    b.sectionPylons(132, -74, 42, 3, 0xff2a1a); // E · SITH ORDER — ring of red-glowing pylons (Sith + clone troopers drop here)
+    b.obelisk(132, -74);
     // the Iron Legion's inner tech-city: towers + a ruined hull inside the walls
     for (const [x, z] of [[96, 40], [112, 58], [84, 66], [100, 76]]) b.obelisk(x, z);
     b.ruin(106, 48);

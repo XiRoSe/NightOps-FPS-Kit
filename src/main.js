@@ -504,6 +504,7 @@ class Game {
       { c: [92, 54], tribe: [{ kind: "heavy" }, { kind: "robot" }] },        // NE Iron Legion
       { c: [66, -44], tribe: [{ kind: "sentry" }, { kind: "drone" }] },      // SE Hollow Watch
       { c: [-50, -40], tribe: [{ hp: 100, speed: 2.6 }] },                   // SW Vault Garrison
+      { c: [132, -74], tribe: [{ sith: true, tint: 0x18181f, hp: 150 }, { sith: true, tint: 0x18181f, hp: 150 }, { tint: 0xeceef2, hp: 90 }] }, // E · SITH ORDER + clone troopers
     ];
     const s = SECTIONS[(this._reinfIdx = (this._reinfIdx || 0) + 1) % SECTIONS.length];
     const spec = { ...s.tribe[Math.floor(Math.random() * s.tribe.length)] };
