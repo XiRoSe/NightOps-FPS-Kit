@@ -102,7 +102,7 @@ class Game {
     // pointer-lock driven state transitions (desktop)
     this.controller.onLock = () => { if (!this._introDone) this._beginIntro(); else this._startPlay(); };
     this.controller.onUnlock = () => {
-      if (this.state === "play") { this.state = "pause"; this.touch.hide(); this.hud.showPause(() => this._resume()); }
+      if (this.state === "play") { this.state = "pause"; this.touch.hide(); this.audio.jetpack?.(false); this.hud.showPause(() => this._resume()); }
     };
 
     this.engine.start((dt, t) => this.update(dt, t));
@@ -284,6 +284,7 @@ class Game {
   _win(extra = {}) {
     if (this.state === "win") return;
     this.state = "win";
+    this.audio.jetpack?.(false);
     const acc = this.shotsFired ? Math.round((this.shotsHit / this.shotsFired) * 100) : 0;
     this.hud.setCombatVisible(false);
     this.hud.showTimer(false); this.hud.hideDefuse();
@@ -296,6 +297,7 @@ class Game {
   _lose(sub, title) {
     if (this.state === "lose") return;
     this.state = "lose";
+    this.audio.jetpack?.(false);
     this.audio.stopRotor();
     this.hud.setCombatVisible(false);
     this.hud.showTimer(false); this.hud.hideDefuse();
@@ -479,7 +481,7 @@ class Game {
     this.laser?.hide?.();
     this._carPrompt = false;
     this.audio.startEngine?.();
-    this.hud.notify("DRIVING — press E to exit");
+    this.hud.notify("DRIVING — press R to exit");
   }
   _exitCar() {
     const car = this.driving;
@@ -621,7 +623,7 @@ class Game {
     const presses = this.input.drainPresses();
 
     // enter / exit a driveable car with E
-    if (presses.includes("e")) {
+    if (presses.includes("r") && (this.driving || (this.level.cars && this.level.cars.some((v) => (v.pos.x - this.camera.position.x) ** 2 + (v.pos.z - this.camera.position.z) ** 2 < (v.r + 1.5) ** 2)))) {
       if (this.driving) this._exitCar();
       else if (this.level.cars) {
         const c = this.level.cars.find((v) => (v.pos.x - this.camera.position.x) ** 2 + (v.pos.z - this.camera.position.z) ** 2 < (v.r + 1.5) ** 2);
@@ -652,6 +654,11 @@ class Game {
       if (this.controller.swimming && !this._wasSwimming) this.audio.splash && this.audio.splash();
       if (this.controller.swimming && this.controller.moving) { this._swimT = (this._swimT || 0) + dt; if (this._swimT > 0.55) { this._swimT = 0; this.audio.swimStroke && this.audio.swimStroke(); } }
       this._wasSwimming = this.controller.swimming;
+      // jetpack: thruster roar + downward flame exhaust under the player
+      if (this.controller.jetting) {
+        this.audio.jetpack?.(true);
+        for (let i = 0; i < 2; i++) this.vfx.rocketTrail(new THREE.Vector3(this.camera.position.x + (Math.random() - 0.5) * 0.6, this.camera.position.y - 1.5 - Math.random(), this.camera.position.z + (Math.random() - 0.5) * 0.6));
+      } else this.audio.jetpack?.(false);
       this.weapon.update(dt, this.controller.moving);
       this._updateLaser();
       // fire — mouse or touch FIRE button (per weapon mode)
@@ -673,7 +680,7 @@ class Game {
       if (presses.includes("q")) this.hud.setWeaponName(this._weaponName(this.weapon.toggle()));
       if (this.level.cars) { // "press E to drive" prompt when near a car
         const near = this.level.cars.some((v) => (v.pos.x - this.camera.position.x) ** 2 + (v.pos.z - this.camera.position.z) ** 2 < (v.r + 1.8) ** 2);
-        if (near && !this._carPrompt) { this.hud.showPrompt("Press <b>E</b> to drive", 1.4); this._carPrompt = true; }
+        if (near && !this._carPrompt) { this.hud.showPrompt("Press <b>R</b> to drive", 1.4); this._carPrompt = true; }
         else if (!near) this._carPrompt = false;
       }
     }

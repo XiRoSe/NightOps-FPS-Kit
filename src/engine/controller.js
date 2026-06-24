@@ -26,6 +26,7 @@ export class Controller {
     this.vy = 0;
     this.feetY = 0;          // absolute height of the player's feet (0 = ground)
     this.jumpStrength = 7.6; // tuned so you can hop onto ~1.1m crates
+    this.jetForce = 26; // jetpack thrust (strong + fast)
     this.gravity = 21;
     this.stepHeight = 0.4;   // anything taller than feet+step blocks; shorter is mountable
     this.onGround = true;
@@ -145,6 +146,10 @@ export class Controller {
     const jp = input.isDown(" ");
     if (jp && !this._jumpWas && this.onGround && !this.crouching) { this.vy = this.jumpStrength; this.onGround = false; }
     this._jumpWas = jp;
+
+    // JETPACK (hold E) — strong, fast, unlimited upward thrust
+    this.jetting = input.isDown("e") && !this.swimming;
+    if (this.jetting) { this.vy = this.jetForce; this.onGround = false; }
 
     // vertical physics against the surface beneath us (lets you land on crates/platforms)
     this.feetY += this.vy * dt;

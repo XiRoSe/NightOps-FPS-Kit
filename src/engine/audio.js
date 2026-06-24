@@ -159,6 +159,18 @@ export class Audio {
     this._tone(380, 0.22, "sine", 0.12, 150);
   }
   shotgun() { if (this.playBuf("shotgun", 0.6, 0.9 + Math.random() * 0.1)) return; this._noiseBurst(0.3, 500, 0.6, 0.5); this._tone(80, 0.2, "sawtooth", 0.3, 40); }
+  jetpack(on) { // looping thruster roar while the jetpack fires
+    if (!this.ctx) return;
+    if (on && !this._jet) {
+      const g = this.ctx.createGain(); g.gain.value = 0; g.connect(this.master);
+      if (this.buffers.whoosh) { const s = this.ctx.createBufferSource(); s.buffer = this.buffers.whoosh; s.loop = true; s.playbackRate.value = 1.3; s.connect(g); s.start(); this._jet = { src: s, g }; }
+      else { const o = this.ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = 90; const lp = this.ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 700; o.connect(lp); lp.connect(g); o.start(); this._jet = { src: o, g }; }
+      g.gain.linearRampToValueAtTime(0.4, this.ctx.currentTime + 0.12);
+    } else if (!on && this._jet) {
+      const j = this._jet; this._jet = null; j.g.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1);
+      setTimeout(() => { try { j.src.stop(); } catch { /* already stopped */ } }, 280);
+    }
+  }
   wade() { // a wet footstep: bright surface splash + a sloosh + a couple of droplet bloops
     this._noiseBurst(0.18, 2600, 0.4, 0.2, "lowpass");
     this._noiseBurst(0.26, 760, 0.7, 0.15, "lowpass");
