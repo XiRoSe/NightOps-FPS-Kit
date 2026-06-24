@@ -509,8 +509,8 @@ export class LevelBuilder {
   // a low-poly GLB rock (cover / dressing), seated on the terrain
   rock(x, z, s = 1) {
     const g = makeRock(Math.floor(Math.random() * 2)); if (!g) return;
-    const gy = this._groundY(x, z);
-    g.position.set(x, gy, z); g.scale.multiplyScalar(s); g.rotation.y = Math.random() * 6.28;
+    const gy = this._lowGround(x, z, 1.4 * s); // lowest point under it (no float on slopes)
+    g.position.set(x, gy - 0.4 * s, z); g.scale.multiplyScalar(s); g.rotation.y = Math.random() * 6.28; // embed the base so it sits ON the ground
     this.scene.add(g);
     const c = this.collide(x, z, 1.7 * s, 1.7 * s, 2.8 * s); c.baseY = gy; // matches the rock mesh + tall enough to block enemy line-of-sight
   }
