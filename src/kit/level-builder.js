@@ -604,6 +604,57 @@ export class LevelBuilder {
     return { x, z, top: gy + baseH };
   }
 
+  // Place items evenly around a ring (radius r, centre cx,cz), leaving `gates` large evenly-spaced GAPS
+  // (the section's entryways). `place(x,z,angle,isGatePost)` builds each piece; gate posts flank the gaps.
+  ringOf(cx, cz, r, count, gates, gateWidth, place) {
+    const isGate = (f) => { for (let gi = 0; gi < gates; gi++) { let d = Math.abs(f - gi / gates); d = Math.min(d, 1 - d); if (d < gateWidth) return true; } return false; };
+    for (let i = 0; i < count; i++) {
+      const f = i / count, a = f * Math.PI * 2, x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
+      if (isGate(f)) continue;
+      // a gate post if the NEXT or PREV slot is a gate (i.e. we're at an edge of an opening)
+      const edge = isGate((i + 1) / count) || isGate((i - 1 + count) / count);
+      place(x, z, a, edge);
+    }
+  }
+
+  // ── ANCIENT WALLS (Iron Legion): a ring of weathered crenellated stone, with tall gate pillars ──
+  sectionWalls(cx, cz, r, gates = 3) {
+    const N = 40, segW = (2 * Math.PI * r) / N * 1.15, stone = 0xb7ac8f, dark = 0x9a8f72;
+    this.ringOf(cx, cz, r, N, gates, 0.05, (x, z, a, edge) => {
+      const gy = this._groundY(x, z); if (gy < 0.3) return; // skip over water
+      const seg = box(segW, 3.2, 1.0, edge ? dark : stone, { roughness: 0.96, flat: true });
+      seg.position.set(x, gy + 1.6, z); seg.rotation.y = -a; seg.castShadow = true; seg.receiveShadow = true; this.scene.add(seg);
+      for (let b = -1; b <= 1; b++) { const m = box(segW * 0.26, 0.7, 1.1, stone, { roughness: 0.95 }); m.position.set(x - Math.sin(-a) * b * segW * 0.33, gy + 3.55, z - Math.cos(-a) * b * segW * 0.33); m.rotation.y = -a; this.scene.add(m); } // battlements
+      (this.collide(x, z, segW * 0.85, segW * 0.85, 3.2)).baseY = gy;
+      if (edge) { const post = cyl(0.7, 0.85, 5.2, dark, 8, { roughness: 0.92 }); post.position.set(x, gy + 2.6, z); post.castShadow = true; this.scene.add(post); (this.collide(x, z, 1.6, 1.6, 5.2)).baseY = gy; } // gate pillar
+    });
+  }
+
+  // ── THICK FOREST (Saurian Brood): 3 dense concentric tree rings with path gaps ──
+  sectionForest(cx, cz, r, gates = 4) {
+    for (let layer = 0; layer < 3; layer++) {
+      const rr = r + (layer - 1) * 7, N = Math.round(rr * 0.5);
+      this.ringOf(cx, cz, rr, N, gates, 0.06, (x, z) => {
+        if (this._groundY(x, z) < 0.5) return; // keep trees out of the water
+        this.tree(x + (Math.random() - 0.5) * 4, z + (Math.random() - 0.5) * 4, 1.0 + Math.random() * 0.5);
+      });
+    }
+  }
+
+  // ── SENTINEL PYLONS (Hollow Watch): a ring of tall glowing tech pylons, gaps for entry ──
+  sectionPylons(cx, cz, r, gates = 3, color = 0x46ff8a) {
+    const N = 22;
+    this.ringOf(cx, cz, r, N, gates, 0.06, (x, z, a, edge) => {
+      const gy = this._groundY(x, z); if (gy < 0.3) return;
+      const h = edge ? 6.5 : 4.5;
+      const p = box(0.7, h, 0.7, 0x2b2f36, { metalness: 0.6, roughness: 0.5 }); p.position.set(x, gy + h / 2, z); p.castShadow = true; this.scene.add(p);
+      const em = noOutline(new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 2.2 }));
+      const tip = new THREE.Mesh(new THREE.OctahedronGeometry(edge ? 0.6 : 0.42), em); tip.position.set(x, gy + h + 0.3, z); this.scene.add(tip);
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this._glowTex(), color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); halo.scale.setScalar(2.4); halo.position.set(x, gy + h + 0.3, z); this.scene.add(halo);
+      (this.collide(x, z, 1, 1, h)).baseY = gy;
+    });
+  }
+
   scatterTrees(n, rMin, rMax) {
     const clusters = 13;
     for (let cI = 0; cI < clusters; cI++) {
