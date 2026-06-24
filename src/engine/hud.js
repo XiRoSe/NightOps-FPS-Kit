@@ -239,12 +239,18 @@ export class HUD {
       + paragraphs.map((p) => `<p style="font-size:2.5vw;margin:0 0 1.1em;">${p}</p>`).join("");
     wrap.appendChild(inner); wrap.appendChild(fade); document.body.appendChild(wrap);
     inner.animate(
-      [{ transform: "translateX(-50%) rotateX(32deg) translateY(0%)" }, { transform: "translateX(-50%) rotateX(32deg) translateY(-205%)" }],
+      [
+        { transform: "translateX(-50%) rotateX(32deg) translateY(0%)", opacity: 1 },
+        { offset: 0.8, transform: "translateX(-50%) rotateX(32deg) translateY(-235%)", opacity: 1 },
+        { transform: "translateX(-50%) rotateX(32deg) translateY(-320%)", opacity: 0 }, // fully scroll off + fade out
+      ],
       { duration: dur, easing: "linear", fill: "forwards" },
     );
+    // auto-remove once the crawl has run (belt-and-braces so nothing lingers on screen)
+    this._crawlT = setTimeout(() => this.hideCrawl(), dur + 200);
     this._crawl = wrap;
   }
-  hideCrawl() { if (this._crawl) { this._crawl.remove(); this._crawl = null; } }
+  hideCrawl() { if (this._crawlT) { clearTimeout(this._crawlT); this._crawlT = null; } if (this._crawl) { this._crawl.remove(); this._crawl = null; } }
   // clean centered XIII-style banner (map-section entry etc.): bold text on a gold rule, sweeps in + fades
   showBanner(title, sub = "", dur = 2600) {
     this.hideBanner();
