@@ -231,6 +231,8 @@ export class Enemy {
   }
 
   update(dt, playerPos, ctx) {
+    // terrain-follow on sculpted levels (island): keep the soldier seated on the relief under it
+    if (this.level.terrainHeight && !this.blasted) this.baseY = this.level.terrainHeight(this.pos.x, this.pos.z);
     if (this.dead) {
       this.deathT += dt;
       if (this.blasted) {

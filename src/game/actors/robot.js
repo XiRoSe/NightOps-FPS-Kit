@@ -41,6 +41,8 @@ export class Robot {
     hbMat.userData.outlineParameters = { visible: false };
     this.hitbox = new THREE.Mesh(new THREE.BoxGeometry(cfg.hbW, cfg.hbH, cfg.hbW), hbMat);
     this.hitbox.position.y = cfg.hbH / 2; this.hitbox.userData.enemy = this; this.group.add(this.hitbox);
+    this.boss = !!spawn.boss;
+    if (spawn.scale) { this.model && this.model.scale.multiplyScalar(spawn.scale); this.hitbox.scale.setScalar(spawn.scale); this.hitbox.position.y = cfg.hbH / 2 * spawn.scale; this.cfg = { ...cfg, boom: cfg.boom * spawn.scale }; }
   }
 
   // crossfade to a clip; matches "Armature|Run" by suffix, else any clip containing the key

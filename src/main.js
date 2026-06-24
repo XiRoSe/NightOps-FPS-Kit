@@ -155,15 +155,23 @@ class Game {
     this.hud.showStart(() => this._deploy(), { title: this.levelDef.name, brief: this.objective.brief() });
   }
   _lobbyFrame(mode) {
-    const sp = this.level.playerSpawn, gy = this._lobbyGY || 0;
-    if (mode === "select") { this.camera.position.set(sp.x + 0.9, gy + 1.85, sp.z + 4.4); this.camera.lookAt(sp.x, gy + 1.15, sp.z); }
-    else { this.camera.position.set(sp.x + 1.4, gy + 2.5, sp.z + 7); this.camera.lookAt(sp.x, gy + 1.0, sp.z); }
+    const c = this._lobbyCtr; if (!c) return; // hero stands on a sky podium; camera looks level so only sky is behind
+    if (mode === "select") { this.camera.position.set(c.x + 1.0, c.y + 1.85, c.z + 4.2); this.camera.lookAt(c.x, c.y + 1.1, c.z); }
+    else { this.camera.position.set(c.x + 1.6, c.y + 2.3, c.z + 6.6); this.camera.lookAt(c.x, c.y + 1.0, c.z); }
   }
 
   _setupLobby() {
+    // a dedicated sky stage high above the island so the backdrop is clean sky (not the level)
     const sp = this.level.playerSpawn;
-    this._lobbyGY = this.level.terrainHeight ? this.level.terrainHeight(sp.x, sp.z) : 0;
-    this._lobby = new THREE.Group(); this._lobby.position.set(sp.x, this._lobbyGY, sp.z); this.scene.add(this._lobby);
+    this._lobbyCtr = new THREE.Vector3(sp.x, (this.level.terrainHeight ? this.level.terrainHeight(sp.x, sp.z) : 0) + 420, sp.z);
+    this._lobby = new THREE.Group(); this._lobby.position.copy(this._lobbyCtr); this.scene.add(this._lobby);
+    // hide all FP weapon viewmodels while in the lobby (re-shown on deploy)
+    this.weapon.group.visible = false; this.weapon.launcher.visible = false; this.weapon.energy.visible = false; this.weapon.laserGun.visible = false; this.weapon.sword.visible = false;
+    // a circular metal podium with a glowing rim under the hero
+    const podium = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.6, 0.4, 32), new THREE.MeshStandardMaterial({ color: 0x23272e, metalness: 0.8, roughness: 0.4 }));
+    podium.position.y = -0.2; this._lobby.add(podium);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.08, 8, 40), new THREE.MeshStandardMaterial({ color: 0x6fd0ff, emissive: 0x2a9cff, emissiveIntensity: 2.2 }));
+    rim.rotation.x = Math.PI / 2; rim.position.y = 0.02; this._lobby.add(rim);
     this._setLobbyHero(this.hero);
   }
   _setLobbyHero(id) {

@@ -50,5 +50,10 @@ export const arcfall = {
     for (const [x, z] of drones) b.enemy({ kind: "drone", x, z });
     b.enemy({ kind: "robot", x: 126, z: 56 });   // giant mech guarding a far arc
     b.enemy({ kind: "robot", x: 112, z: -12 });   // a second giant mech
+    // the Vault's corrupted human garrison (soldiers), guarding key arcs
+    const soldiers = [[36, 46], [-66, -10], [88, 28], [-30, -50], [60, -78]];
+    for (const [x, z] of soldiers) b.enemy({ x, z, hp: 100, speed: 2.6, patrol: [{ x, z }, { x: x + 6, z: z + 5 }] });
+    // THE GUARDIAN — a colossal boss mech standing before the palace (Vault core)
+    b.enemy({ kind: "robot", x: 40, z: -48, hp: 1600, scale: 2.0, boss: true });
   },
 };
