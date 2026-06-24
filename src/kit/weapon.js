@@ -8,9 +8,17 @@ export class Weapon {
   constructor(camera, audio) {
     this.camera = camera;
     this.audio = audio;
-    this.magSize = 30;
-    this.ammo = 30;
-    this.reserve = 90;
+    // unified magazine + reserve ammo for every ranged weapon: { mag (loaded), size (mag capacity), reserve }
+    this.A = {
+      rifle:   { mag: 30, size: 30, reserve: 120 },
+      smg:     { mag: 30, size: 30, reserve: 120 },
+      minigun: { mag: 60, size: 60, reserve: 180 },
+      burst:   { mag: 24, size: 24, reserve: 96 },
+      railgun: { mag: 4,  size: 4,  reserve: 16 },
+      flak:    { mag: 8,  size: 8,  reserve: 32 },
+      laser:   { mag: 40, size: 40, reserve: 120 },
+      plasma:  { mag: 6,  size: 6,  reserve: 18 },
+    };
     this.fireRate = 0.092; // ~650 rpm
     this.reloadTime = 1.5;
     this.damage = 34;
@@ -38,9 +46,8 @@ export class Weapon {
 
     // weapons cycled with Q — sword (melee) always owned; plasma/laser unlocked via island pickups
     this.owned = ["rifle", "sword", "launcher"]; // mode order for cycling
-    this.plasmaRate = 0.5; this._lastPlasma = -10; this.plasmaAmmo = 24;
-    this.laserRate = 0.11; this._lastLaser = -10; this.laserAmmo = 90; // rapid laser rifle
-    this.shotgunRate = 0.8; this._lastShotgun = -10; this.shotgunAmmo = 18; // spread shotgun
+    this.plasmaRate = 0.5; this._lastPlasma = -10;
+    this.laserRate = 0.11; this._lastLaser = -10; // rapid laser rifle
     this.swordRate = 0.5; this._lastSword = -10;
     this.energy = new THREE.Group(); this.energy.visible = false;
     this.energy.position.set(0.32, -0.34, -0.4); this.energy.rotation.set(0, Math.PI, 0);
@@ -61,7 +68,7 @@ export class Weapon {
       railgun: { model: "railgun", rate: 1.1,   ammo: 14,  dmg: 240, pellets: 1, spread: 0,    sound: "beam",    pitch: 0.7,  beam: 0x46ff5a, kick: 0.16, pierce: true },
       flak:    { model: "minigun", rate: 0.45,  ammo: 36,  dmg: 18,  pellets: 6, spread: 0.16, sound: "shotgun", pitch: 1.0,  beam: 0xffcaa0, kick: 0.16 },
     };
-    this.gunAmmo = {}; this._gunLast = {}; for (const k in this.guns) { this.gunAmmo[k] = this.guns[k].ammo; this._gunLast[k] = -10; }
+    this._gunLast = {}; for (const k in this.guns) this._gunLast[k] = -10;
     this.extraGun = new THREE.Group(); this.extraGun.visible = false;
     this.extraGun.position.set(0.32, -0.34, -0.4); this.extraGun.rotation.set(0, Math.PI, 0);
     camera.add(this.extraGun); this._gunModels = {};
@@ -178,7 +185,6 @@ export class Weapon {
     this._bladeMat = new THREE.MeshStandardMaterial({ color: 0xdfe9f5, emissive: 0x4fc6ff, emissiveIntensity: 1.4, metalness: 0.6, roughness: 0.2 });
     const blade = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.95, 0.02), this._bladeMat); blade.position.set(0, 0.6, 0.18); g.add(blade);
     const tip = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.16, 4), this._bladeMat); tip.position.set(0, 1.1, 0.18); g.add(tip);
-    g.rotation.set(0.2, Math.PI, -0.3); // resting pose, blade up-right
   }
   // Replace the procedural placeholders with real CC0 GLB models once loaded (called post-preload).
   buildFpWeapons() {
@@ -191,7 +197,7 @@ export class Weapon {
     swap(this.energy, "plasma", [0, -Math.PI / 2, 0], [0, 0, 0.1]);
     swap(this.laserGun, "laser", [0, -Math.PI / 2, 0], [0, 0, 0.1]);
     swap(this.shotgunGun, "shotgun", [0, -Math.PI / 2, 0], [0, 0, 0.1]);
-    swap(this.sword, "sword", [-0.7 + Math.PI, 0, 0], [0, 0.12, -0.18]); // flipped: blade leads up-forward, grip toward camera
+    swap(this.sword, "sword", [0, 0, 0], [0, 0, 0]); // real GLB sword, neutral — oriented/animated by the swing code
     for (const key of ["smg", "minigun", "railgun"]) { // generic-gun viewmodels (swapped into one slot)
       const m = makeFpWeapon(key); if (m) { m.rotation.set(0, -Math.PI / 2, 0); m.position.set(0, 0, 0.1); this._gunModels[key] = m; }
     }
@@ -226,16 +232,12 @@ export class Weapon {
     }
   }
   // top up EVERY weapon's ammo (ammo pickups collected around the island)
-  addAmmo(mult = 1) {
-    this.reserve += Math.round(90 * mult);
-    this.laserAmmo += Math.round(80 * mult);
-    this.shotgunAmmo += Math.round(10 * mult);
-    this.plasmaAmmo += Math.round(8 * mult);
+  addAmmo(mult = 1) { // ammo pickup tops up every weapon's RESERVE (~1.5 mags each)
+    for (const k in this.A) this.A[k].reserve += Math.round(this.A[k].size * 1.5 * mult);
     this.rockets = Math.min(8, this.rockets + Math.round(2 * mult));
-    for (const k in this.guns) this.gunAmmo[k] += Math.round(this.guns[k].ammo * 0.35 * mult);
   }
-  canFireGun(t) { const g = this.guns[this.mode]; return !!g && this.gunAmmo[this.mode] > 0 && (t - this._gunLast[this.mode]) >= g.rate; }
-  fireGun(t) { const g = this.guns[this.mode]; this._gunLast[this.mode] = t; this.gunAmmo[this.mode]--; this.kick = g.kick; this.kickRot = g.kick * 1.2; this.audio && this.audio[g.sound] && this.audio[g.sound](g.pitch || 1); }
+  canFireGun(t) { const g = this.guns[this.mode], a = this.A[this.mode]; return !!g && !this.reloading && a.mag > 0 && (t - this._gunLast[this.mode]) >= g.rate; }
+  fireGun(t) { const g = this.guns[this.mode], a = this.A[this.mode]; this._gunLast[this.mode] = t; a.mag--; this.kick = g.kick; this.kickRot = g.kick * 1.2; this.audio && this.audio[g.sound] && this.audio[g.sound](g.pitch || 1); if (a.mag === 0) this.reload(); }
 
   // cycle through owned weapons (Q)
   toggle() {
@@ -251,15 +253,13 @@ export class Weapon {
   }
 
   canFire(t) {
-    return !this.reloading && this.ammo > 0 && (t - this._lastShot) >= this.fireRate;
+    return !this.reloading && this.A.rifle.mag > 0 && (t - this._lastShot) >= this.fireRate;
   }
 
-  canFirePlasma(t) { return this.mode === "plasma" && this.plasmaAmmo > 0 && (t - this._lastPlasma) >= this.plasmaRate; }
-  firePlasma(t) { this._lastPlasma = t; this.plasmaAmmo--; this.kick = 0.13; this.kickRot = 0.17; this.audio?.plasma?.(); }
-  canFireLaser(t) { return this.mode === "laser" && this.laserAmmo > 0 && (t - this._lastLaser) >= this.laserRate; }
-  fireLaser(t) { this._lastLaser = t; this.laserAmmo--; this.kick = 0.04; this.kickRot = 0.05; this.audio?.laser?.(); }
-  canFireShotgun(t) { return this.mode === "shotgun" && this.shotgunAmmo > 0 && (t - this._lastShotgun) >= this.shotgunRate; }
-  fireShotgun(t) { this._lastShotgun = t; this.shotgunAmmo--; this.kick = 0.18; this.kickRot = 0.24; this.audio?.shotgun?.(); }
+  canFirePlasma(t) { return this.mode === "plasma" && !this.reloading && this.A.plasma.mag > 0 && (t - this._lastPlasma) >= this.plasmaRate; }
+  firePlasma(t) { this._lastPlasma = t; this.A.plasma.mag--; this.kick = 0.13; this.kickRot = 0.17; this.audio?.plasma?.(); if (this.A.plasma.mag === 0) this.reload(); }
+  canFireLaser(t) { return this.mode === "laser" && !this.reloading && this.A.laser.mag > 0 && (t - this._lastLaser) >= this.laserRate; }
+  fireLaser(t) { this._lastLaser = t; this.A.laser.mag--; this.kick = 0.04; this.kickRot = 0.05; this.audio?.laser?.(); if (this.A.laser.mag === 0) this.reload(); }
   canFireSword(t) { return this.mode === "sword" && (t - this._lastSword) >= this.swordRate; }
   fireSword(t) { this._lastSword = t; this._swingT = 0.32; this.audio?.swordSwing?.(); }
 
@@ -274,7 +274,7 @@ export class Weapon {
   }
 
   fire(t) {
-    this.ammo--;
+    this.A.rifle.mag--;
     this._lastShot = t;
     this.kick = Math.min(this.kick + 0.06, 0.12);
     this.kickRot = Math.min(this.kickRot + 0.09, 0.18);
@@ -285,12 +285,14 @@ export class Weapon {
     this.flashLight.intensity = 6;
     this._flashT = 0.05;
     this.audio?.shoot?.();
-    if (this.ammo === 0) this.reload();
+    if (this.A.rifle.mag === 0) this.reload();
   }
 
+  // reload the CURRENT weapon's magazine from its reserve (works for every ranged weapon)
   reload() {
-    if (this.reloading || this.ammo === this.magSize || this.reserve <= 0) return;
-    this.reloading = true;
+    const a = this.A[this.mode];
+    if (!a || this.reloading || a.mag >= a.size || a.reserve <= 0) return;
+    this.reloading = true; this._reloadMode = this.mode;
     this._reloadT = this.reloadTime;
     this.audio?.reload?.();
   }
@@ -319,12 +321,12 @@ export class Weapon {
     );
     this.group.rotation.set(this._baseRot.x - this.kickRot, this._baseRot.y, this._baseRot.z);
 
-    // sword: blade raised up-right at rest (windup) → diagonal CUT down-across to the lower-left.
-    // Grip stays CLOSE to the camera (fixed, lower-right) the whole time so no hands are needed.
+    // sword (procedural energy blade, +Y from the grip): held up-RIGHT at rest, then a real diagonal CUT
+    // sweeping DOWN-and-across to the lower-left and recovering. Grip stays close to the camera (no hands).
     if (this.sword.visible) {
       const a = this._swingT > 0 ? Math.sin((1 - (this._swingT -= dt) / 0.32) * Math.PI) : 0;
-      this.sword.rotation.set(-1.3 + a * 1.9, Math.PI, 1.0 - a * 2.1); // pitch up→down, roll sweeps across
-      this.sword.position.set(0.36, -0.34, -0.42);                     // grip held close, lower-right
+      this.sword.rotation.set(-0.5 + a * 1.85, 0.2 - a * 0.45, 0.45 - a * 2.05); // tilt blade up→down + roll across
+      this.sword.position.set(0.3 - a * 0.1, -0.42 - a * 0.05, -0.52 - a * 0.12); // grip near camera, slight lunge
       if (this._swingT < 0) this._swingT = 0;
     }
 
@@ -345,10 +347,9 @@ export class Weapon {
       this._mag.position.set(this._magBase.x, this._magBase.y + magY, this._magBase.z);
       this._mag.rotation.x = magRot;
       if (this._reloadT <= 0) {
-        const need = this.magSize - this.ammo;
-        const take = Math.min(need, this.reserve);
-        this.ammo += take;
-        this.reserve -= take;
+        const a = this.A[this._reloadMode] || this.A.rifle;
+        const take = Math.min(a.size - a.mag, a.reserve);
+        a.mag += take; a.reserve -= take;
         this.reloading = false;
         this._mag.position.copy(this._magBase);
         this._mag.rotation.x = 0;
