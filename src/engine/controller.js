@@ -8,7 +8,7 @@ export class Controller {
     this.level = level;
 
     this.eye = 1.7;
-    this.radius = 0.4;
+    this.radius = 0.5;
     this.walkSpeed = 6.2;
     this.sprintSpeed = 9.8;
     this.bob = 0;
@@ -151,9 +151,10 @@ export class Controller {
     this.vy -= this.gravity * dt;
     const groundY = this._groundUnder(this.camera.position.x, this.camera.position.z);
     const sea = this.level.seaLevel;
-    if (sea !== undefined && groundY < sea - 1.0 && this.feetY < sea - 0.5) {
-      // over deep water → swim: float at the surface (head above) with a gentle bob
-      this.feetY = sea - 0.9; this.vy = 0; this.onGround = false; this.swimming = true;
+    if (sea !== undefined && groundY < sea - 1.0) {
+      // over deep water → swim: ease smoothly to the surface (head above water), no jitter
+      this.swimming = true; this.onGround = false; this.vy = 0;
+      this.feetY += ((sea - 0.9) - this.feetY) * Math.min(1, dt * 6);
     } else {
       this.swimming = false;
       if (this.feetY <= groundY) { this.feetY = groundY; this.vy = 0; this.onGround = true; }

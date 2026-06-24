@@ -476,7 +476,7 @@ export class LevelBuilder {
       if (cc.g > cc.r * 0.85 && cc.g > cc.b * 1.1) { o.material = o.material.clone(); o.material.color.copy(leaf); }
     });
     this.scene.add(g);
-    const c = this.collide(x, z, 0.7 * s, 0.7 * s, 1.4); c.baseY = gy;
+    const c = this.collide(x, z, 0.95 * s, 0.95 * s, 1.4); c.baseY = gy;
   }
 
   // a low-poly GLB rock (cover / dressing), seated on the terrain
@@ -485,7 +485,7 @@ export class LevelBuilder {
     const gy = this._groundY(x, z);
     g.position.set(x, gy, z); g.scale.multiplyScalar(s); g.rotation.y = Math.random() * 6.28;
     this.scene.add(g);
-    const c = this.collide(x, z, 1.3 * s, 1.3 * s, 2.8 * s); c.baseY = gy; // tall enough to block enemy line-of-sight (real cover)
+    const c = this.collide(x, z, 1.7 * s, 1.7 * s, 2.8 * s); c.baseY = gy; // matches the rock mesh + tall enough to block enemy line-of-sight
   }
 
   // a climbable wooden lookout: a raised platform reached by a walkable staircase (terrain-seated).

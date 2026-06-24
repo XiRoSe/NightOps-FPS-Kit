@@ -527,7 +527,6 @@ class Game {
     this.vfx.update(dt); // always fade effects (even while paused) so trails clear
     this.engine.driftClouds && this.engine.driftClouds(dt, t); // clouds drift + billow across the sky
     this.engine.skyStorm && this.engine.skyStorm(dt); // purple-storm lightning
-    this.engine.shootingStars && this.engine.shootingStars(dt); // meteors streak the storm sky
     this.level.update(t); // wave the objective flag
     this.laser.hide(); // re-shown each frame during play
     if (this.state === "intro") {
