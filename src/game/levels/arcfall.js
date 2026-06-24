@@ -5,7 +5,7 @@ export const arcfall = {
   name: "ARCFALL",
   config: {
     scene: { sky: "day", fog: { color: 0xbfe0f4, near: 160, far: 700 }, fov: 75 },
-    intro: { enabled: true, style: "parachute", spottedCalloutAt: 4.5 },
+    intro: { enabled: true, style: "droppod", spottedCalloutAt: 4.5 },
     objective: { type: "collect", count: 12 },
     helicopter: { spawnDelay: 99999 }, // no gunship boss on the island (for now)
     player: { grenades: 4 },

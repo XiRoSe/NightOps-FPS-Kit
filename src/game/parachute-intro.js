@@ -1,12 +1,13 @@
 import * as THREE from "three";
 import { noOutline } from "../engine/primitives.js";
-import { HEROES } from "./actors/creature-assets.js";
+import { makeHero } from "./actors/operator.js";
+import { HERO_TINT } from "./actors/creature-assets.js";
 
 // Third-person parachute insertion: a behind-the-back camera follows a strong warrior descending under
 // a canopy, all the way down until he lands on the ground, the canopy collapsing — then it cuts to
 // first-person. Same interface as Intro ({ start(), update(dt), done, dispose() }).
 export class ParachuteIntro {
-  constructor(scene, camera, spawn, groundY = 0, heroId = "barbarian") {
+  constructor(scene, camera, spawn, groundY = 0, heroId = "assault") {
     this.scene = scene; this.camera = camera;
     this.spawn = new THREE.Vector3(spawn.x, groundY, spawn.z);
     this.t = 0; this.dur = 8.0; this.hold = 0; this.done = false; this.startY = 150;
@@ -14,18 +15,10 @@ export class ParachuteIntro {
     this.pos = new THREE.Vector3(spawn.x, this.startY, spawn.z);
     this.group = new THREE.Group(); this.scene.add(this.group);
 
-    // the warrior avatar (animated), gripping the harness; plays Idle through the descent
+    // the operator avatar hanging from the harness
     this.rig = new THREE.Group(); this.group.add(this.rig);
-    const inst = (HEROES[heroId] || HEROES.barbarian).make();
-    if (inst) {
-      this.op = inst.model;
-      this.op.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-      this.rig.add(this.op); this.rig.rotation.x = 0.14;
-      this.mixer = new THREE.AnimationMixer(this.op);
-      const a = inst.animations;
-      const idle = a.find((c) => c.name === "Idle") || a.find((c) => /idle/i.test(c.name)) || a[0];
-      if (idle) this.mixer.clipAction(idle).play();
-    }
+    const inst = makeHero(HERO_TINT[heroId]);
+    if (inst) { this.op = inst.model; this.rig.add(this.op); this.rig.rotation.x = 0.14; }
 
     // colorful canopy + risers down to the harness
     const canopyY = 7.2, R = 3.8;

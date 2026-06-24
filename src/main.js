@@ -17,9 +17,10 @@ import { Combat } from "./game/combat.js";
 import { Helicopter, preloadHeli } from "./game/actors/helicopter.js";
 import { Intro } from "./game/intro.js";
 import { ParachuteIntro } from "./game/parachute-intro.js";
+import { DropPodIntro } from "./game/drop-pod-intro.js";
 import { preloadEnemies } from "./game/actors/enemy.js";
-import { preloadOperator } from "./game/actors/operator.js";
-import { preloadCreatures, preloadHeroes, HEROES, HERO_LIST } from "./game/actors/creature-assets.js";
+import { preloadOperator, makeHero } from "./game/actors/operator.js";
+import { preloadCreatures, HERO_LIST, HERO_TINT, HERO_WEAPON } from "./game/actors/creature-assets.js";
 import { preloadNature } from "./kit/content/nature.js";
 import { preloadVehicles } from "./kit/content/vehicles.js";
 import { preloadPickups } from "./kit/content/pickups.js";
@@ -106,7 +107,7 @@ class Game {
     this.hud.showLoading();
     this.audio.ensure(); // create the (suspended) audio context now so clips — incl. the heli rotor — preload before Deploy
     // load models progressively (async, off the main thread) with a progress readout
-    const jobs = [preloadEnemies(), preloadHeli(), preloadOperator(), preloadVehicles(), preloadPickups(), preloadWeapons(), preloadCreatures(), preloadNature(), preloadHeroes(), preloadFpWeapons()];
+    const jobs = [preloadEnemies(), preloadHeli(), preloadOperator(), preloadVehicles(), preloadPickups(), preloadWeapons(), preloadCreatures(), preloadNature(), preloadFpWeapons()];
     let done = 0; this.hud.setLoadingProgress(0, jobs.length + 1);
     jobs.forEach((p) => p.then(() => this.hud.setLoadingProgress(++done, jobs.length + 1)));
     await Promise.all(jobs);
@@ -115,8 +116,8 @@ class Game {
     // build the level now that all prop models are loaded, then seat the camera at the spawn
     this.levelDef.build(this.level);
     const sp = this.level.playerSpawn;
-    this.hero = "barbarian";
-    this._heroLobby = HEROES[this.hero] && this.cfg.intro && this.cfg.intro.style === "parachute";
+    this.hero = "assault";
+    this._heroLobby = HERO_TINT[this.hero] != null && this.cfg.intro && (this.cfg.intro.style === "parachute" || this.cfg.intro.style === "droppod");
     if (this._heroLobby) this._setupLobby(); // hero-select lobby on the start screen
     else this.camera.position.set(sp.x, this.controller.eye, sp.z);
     // A persistent gunship searchlight, added to the scene ONCE (intensity 0 when idle). The heli
@@ -169,12 +170,13 @@ class Game {
     this.hero = id;
     if (!this._lobby) return;
     if (this._lobbyHero) { this._lobby.remove(this._lobbyHero); this._lobbyHero = null; this._lobbyMixer = null; }
-    const inst = HEROES[id] && HEROES[id].make(); if (!inst) return;
+    const inst = makeHero(HERO_TINT[id]); if (!inst) return;
     inst.model.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     this._lobby.add(inst.model); this._lobbyHero = inst.model;
-    this._lobbyMixer = new THREE.AnimationMixer(inst.model);
-    const idle = inst.animations.find((c) => c.name === "Idle") || inst.animations.find((c) => /idle/i.test(c.name)) || inst.animations[0];
-    if (idle) this._lobbyMixer.clipAction(idle).play();
+    const anims = inst.animations || [];
+    const idle = anims.find((c) => /idle/i.test(c.name)) || anims[0];
+    if (idle) { this._lobbyMixer = new THREE.AnimationMixer(inst.model); this._lobbyMixer.clipAction(idle).play(); }
+    else this._lobbyMixer = null; // static operator pose
   }
   _disposeLobby() { if (this._lobby) { this.scene.remove(this._lobby); this._lobby = null; this._lobbyHero = null; this._lobbyMixer = null; } }
 
@@ -193,14 +195,16 @@ class Game {
     this._disposeLobby();
     this.hud.hideOverlay();
     this.hud.setCombatVisible(false);
-    this.weapon.group.visible = false; // hands on the rope/canopy, not the gun
-    const parachute = this.cfg.intro.style === "parachute";
-    if (!parachute) this.audio.startRotor();
+    this.weapon.group.visible = false; this.weapon.launcher.visible = false; this.weapon.energy.visible = false; this.weapon.laserGun.visible = false; this.weapon.sword.visible = false;
+    const style = this.cfg.intro.style;
+    if (style !== "parachute" && style !== "droppod") this.audio.startRotor();
     const sp = this.level.playerSpawn;
     const groundY = this.level.terrainHeight ? this.level.terrainHeight(sp.x, sp.z) : 0;
-    this.intro = parachute
-      ? new ParachuteIntro(this.scene, this.camera, sp, groundY, this.hero)
-      : new Intro(this.scene, this.camera, sp);
+    this.intro = style === "droppod"
+      ? new DropPodIntro(this.scene, this.camera, sp, groundY, HERO_TINT[this.hero], this.vfx, this.audio, () => { this.hud._shake = Math.max(this.hud._shake || 0, 18); })
+      : style === "parachute"
+        ? new ParachuteIntro(this.scene, this.camera, sp, groundY, this.hero)
+        : new Intro(this.scene, this.camera, sp);
     this.intro.start();
     this.hud.killFeed(this.cfg.messages.deployHint);
     this._introT = 0;
@@ -227,6 +231,11 @@ class Game {
     this.audio.resume();
     this.hud.hideOverlay();
     this.hud.setCombatVisible(true);
+    // equip the chosen hero's loadout weapon (Assault=rifle, Recon=laser, Heavy=launcher, Marksman=plasma)
+    if (this.hero && HERO_WEAPON[this.hero] && !this._loadoutGiven) {
+      this._loadoutGiven = true; this.weapon.give(HERO_WEAPON[this.hero]);
+      this.hud.setWeaponName(this._weaponName(this.weapon.mode));
+    }
     this.objective.onPlayStart();
     this.hud.setGrenades(this.grenades);
     this.touch.show();
@@ -503,7 +512,7 @@ class Game {
       this.audio.setEngine?.(this.driving.speed);
       if (Math.abs(this.driving.speed) > 7) { // tracks kick up dust at speed
         const c = this.driving.pos, fx = Math.sin(this.driving.yaw), fz = Math.cos(this.driving.yaw);
-        this.vfx.dust(new THREE.Vector3(c.x - fx * 2.5 + (Math.random() - 0.5), this.driving.group.position.y + 0.3, c.z - fz * 2.5 + (Math.random() - 0.5)));
+        this.vfx.dustBurst(new THREE.Vector3(c.x - fx * 2.5 + (Math.random() - 0.5), this.driving.group.position.y + 0.3, c.z - fz * 2.5 + (Math.random() - 0.5)));
       }
     } else {
       this.controller.update(dt, this.input);

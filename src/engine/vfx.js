@@ -179,8 +179,8 @@ export class VFX {
   // glowing plasma-bolt trail
   plasmaTrail(point) { this._flash(point, 0.34, 0x4fb4ff); }
 
-  // kicked-up dust (vehicle wheels / tracks)
-  dust(point) { this._dustPuff(point, 0x9a8a62, 0.7); }
+  // kicked-up dust (vehicle wheels / tracks / impacts) — named dustBurst to avoid the `dust` pool field
+  dustBurst(point) { this._dustPuff(point, 0x9a8a62, 0.7); }
 
   // a bright red laser bolt from a to b + flashes at both ends
   laserBeam(a, b) { this.tracer(a, b); this._flash(a, 0.22, 0xff7a4c); this._flash(b, 0.5, 0xff4a30); }

@@ -666,7 +666,7 @@ export class LevelBuilder {
     }
     waterGeo.setAttribute("color", new THREE.Float32BufferAttribute(wcol, 3));
     const water = new THREE.Mesh(waterGeo, noOutline(new THREE.MeshStandardMaterial({
-      vertexColors: true, flatShading: true, metalness: 0.55, roughness: 0.12, envMapIntensity: 1.3, transparent: true, opacity: 0.92,
+      vertexColors: true, flatShading: true, metalness: 0.4, roughness: 0.22, envMapIntensity: 1.1, transparent: true, opacity: 0.9, // cel-friendly: bold glints, flat facets
     })));
     water.position.y = 0; this.scene.add(water); this._sea = water; this._seaPos = wpos;
     const foam = new THREE.Mesh(new THREE.RingGeometry(R - 4, R + 6, 110),

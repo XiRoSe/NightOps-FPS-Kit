@@ -16,17 +16,13 @@ export const CREATURES = {
 
 export function preloadCreatures() { return Promise.all(Object.values(CREATURES).map((a) => a.preload())); }
 
-// Playable heroes (KayKit Adventurers) — the player picks one in the lobby; used as the parachute avatar.
-export const HEROES = {
-  barbarian: new RiggedAsset("/models/creatures/barbarian.glb", 2.3),
-  knight: new RiggedAsset("/models/creatures/kayknight.glb", 2.3),
-  rogue: new RiggedAsset("/models/creatures/rogue.glb", 2.2),
-  mage: new RiggedAsset("/models/creatures/mage.glb", 2.2),
-};
+// Playable heroes — realistic military operators in 4 loadouts (tint + starting weapon). The operator
+// model itself is preloaded via preloadOperator(); makeHero(tint) builds the tinted instance.
 export const HERO_LIST = [
-  { id: "barbarian", label: "Barbarian", tag: "Brute force & a two-handed axe" },
-  { id: "knight", label: "Knight", tag: "Sword-and-shield bulwark" },
-  { id: "rogue", label: "Rogue", tag: "Fast, silent, deadly" },
-  { id: "mage", label: "Mage", tag: "Arcane firepower" },
+  { id: "assault", label: "Assault", tag: "Balanced · MK-4 Carbine", tint: 0x55603e, weapon: "rifle" },
+  { id: "recon", label: "Recon", tag: "Agile · Laser Rifle", tint: 0x35505e, weapon: "laser" },
+  { id: "heavy", label: "Heavy", tag: "Tanky · Missile Launcher", tint: 0x4a382c, weapon: "launcher" },
+  { id: "marksman", label: "Marksman", tag: "Precision · Plasma Cannon", tint: 0x2c2c34, weapon: "plasma" },
 ];
-export function preloadHeroes() { return Promise.all(Object.values(HEROES).map((a) => a.preload())); }
+export const HERO_TINT = Object.fromEntries(HERO_LIST.map((h) => [h.id, h.tint]));
+export const HERO_WEAPON = Object.fromEntries(HERO_LIST.map((h) => [h.id, h.weapon]));
