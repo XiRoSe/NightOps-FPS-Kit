@@ -25,6 +25,7 @@ export class Combat {
     this.enemies = level.enemySpawns.map((s) => makeActor(scene, s, level));
     this.killCount = 0;
     this.totalEnemies = this.enemies.length;
+    this._scene = scene; this._level = level;
 
     this._dir = new THREE.Vector3();
     this._origin = new THREE.Vector3();
@@ -95,12 +96,23 @@ export class Combat {
     }
   }
 
+  // add a reinforcement enemy at runtime (already alert); returns the actor
+  spawnEnemy(spec) {
+    const e = makeActor(this._scene, spec, this._level);
+    e.aggro = true; if (e.state !== undefined) { e.state = "alert"; e.alertT = 99; }
+    this.enemies.push(e); this.totalEnemies++;
+    this.hooks.onHostiles?.(this.enemies.filter((x) => !x.dead).length);
+    return e;
+  }
+
   update(dt, t, playerPos) {
+    const groundUnderPlayer = this.level.terrainHeight ? this.level.terrainHeight(playerPos.x, playerPos.z) : 0;
     const ctx = {
       vfx: this.vfx,
       audio: this.audio,
       onPlayerHit: (dmg) => this.hooks.onPlayerHit?.(dmg),
       onBossBeam: () => this.hooks.onBossBeam?.(),
+      airborne: (playerPos.y - groundUnderPlayer) > 20, // flying high (jetpack) — enemies can't hit you
     };
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i];

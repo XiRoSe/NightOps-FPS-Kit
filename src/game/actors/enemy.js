@@ -305,7 +305,7 @@ export class Enemy {
     }
     // apply the aim pose FIRST so the shot leaves the raised barrel, not the hip-carry tip
     if (aiming) this._aimArm();
-    if (fireNow) { this.model.updateWorldMatrix(true, true); this._fire(playerPos, ctx); }
+    if (fireNow && !ctx.airborne) { this.model.updateWorldMatrix(true, true); this._fire(playerPos, ctx); } // can't hit you while you fly high
 
     // watchtower guard: never moves — just tracks the player and fires from the post
     if (this._raised) { // deliberate watchtower post — hold position up high
@@ -353,7 +353,7 @@ export class Enemy {
       const px = this.pos.x, pz = this.pos.z;
       movingNow = !this._moveToward(this._roam.x, this._roam.z, dt, this.speed * 0.6);
       if (Math.hypot(this.pos.x - px, this.pos.z - pz) < this.speed * 0.6 * dt * 0.3) { if ((this._stuckT = (this._stuckT || 0) + dt) > 2) { this._roam = null; this._stuckT = 0; } } else this._stuckT = 0; // stuck >2s → new spot
-      this.yaw = Math.atan2(this._roam.x - this.pos.x, this._roam.z - this.pos.z);
+      if (this._roam) this.yaw = Math.atan2(this._roam.x - this.pos.x, this._roam.z - this.pos.z);
       this._play(movingNow ? (this.actions.Walk ? "Walk" : "Run") : "Idle");
     }
 

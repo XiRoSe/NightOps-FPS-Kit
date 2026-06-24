@@ -140,8 +140,8 @@ export class Robot {
     } else { if (this.mixer) this.mixer.timeScale = 1; this._play("idle"); }
     const bob = this.fly ? Math.sin(performance.now() * 0.003 + this.pos.x) * 0.4 : 0;
     this.group.position.set(this.pos.x, flyY + bob, this.pos.z);
-    if (this._hasBeam && d < 110) { this._bossBeam(dt, playerPos, ctx); } // giant chest laser (boss + all mechs)
-    if ((this._fireCd -= dt) <= 0 && d < this.cfg.range + 8 && !this.level.segmentBlocked(this.pos.x, this.pos.z, playerPos.x, playerPos.z, 1.8)) {
+    if (this._hasBeam && d < 110 && !ctx.airborne) { this._bossBeam(dt, playerPos, ctx); } // giant chest laser (boss + all mechs) — not while you fly high
+    if ((this._fireCd -= dt) <= 0 && d < this.cfg.range + 8 && !ctx.airborne && !this.level.segmentBlocked(this.pos.x, this.pos.z, playerPos.x, playerPos.z, 1.8)) {
       this._fireCd = this.cfg.rate + Math.random() * 0.8;
       this._play("shoot", 0.08, true);
       this._gunTip.getWorldPosition(this._muzzle);

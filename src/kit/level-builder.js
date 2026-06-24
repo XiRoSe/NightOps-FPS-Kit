@@ -709,7 +709,7 @@ export class LevelBuilder {
     const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
   }
 
-  islandTerrain({ size = 460, segs = 190, sea = 8000 } = {}) {
+  islandTerrain({ size = 460, segs = 190, sea = 17000 } = {}) {
     const R = size * 0.46; this._seaR = R; // shore radius (wave taper reference)
     const lakes = this._lakes || [];
     // smooth value-noise → fbm, for organic relief + ground variety

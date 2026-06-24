@@ -41,27 +41,8 @@ export const arcfall = {
                   [-44, 64], [90, -58], [-86, -52], [118, 42], [-118, -32], [16, 96]];
     for (const [x, z] of arcs) b.arc(x, z);
 
-    // ── EVERY ARC IS GUARDED by its region's tribe — guardians ring the Arc within ~22m (the story) ──
-    const quad = (x, z) => (x < 0 ? (z >= 0 ? "NW" : "SW") : (z >= 0 ? "NE" : "SE"));
-    const TRIBES = {
-      NW: [{ kind: "monster" }, { kind: "monster" }, { kind: "monster" }],   // Saurian Brood (beasts)
-      NE: [{ kind: "heavy" }, { kind: "robot" }],                            // Iron Legion (war machines)
-      SE: [{ kind: "sentry" }, { kind: "drone" }],                          // Hollow Watch (sentinels)
-      SW: [{ hp: 100, speed: 2.6 }, { hp: 100, speed: 2.6 }],               // Vault Garrison (soldiers)
-    };
-    for (const [ax, az] of arcs) {
-      const specs = TRIBES[quad(ax, az)];
-      specs.forEach((s, i) => {
-        const ang = (ax * 0.7 + az * 1.3) + (i / specs.length) * Math.PI * 2, rr = 12 + (i % 3) * 5; // 12-22m out
-        let gx = ax + Math.cos(ang) * rr, gz = az + Math.sin(ang) * rr;
-        const dS = Math.hypot(gx, gz); // keep a wide clear landing bubble so nothing engages at spawn
-        if (dS < 58) { const m = 58 / (dS || 1); gx *= m; gz *= m; }
-        b.enemy({ ...s, x: gx, z: gz });
-      });
-    }
-    b.enemy({ kind: "trex", x: -58, z: 30 });   // the Saurian Brood's apex predator, prowling the NW arcs
-    // THE GUARDIAN — a colossal boss mech standing in the OPEN before the palace stairs (clear of the
-    // structure), guarding the approach + the nearby SE arc (the finale)
+    // No pre-placed enemies — the island starts empty; reinforcements DROP from the sky every 5s into a
+    // rotating section (handled in main._dropReinforcement). THE GUARDIAN boss waits at the palace as the finale.
     b.enemy({ kind: "robot", x: 44, z: -24, hp: 1600, scale: 2.0, boss: true });
 
     // gift crates (loot: ammo / health / grenades + two sci-fi weapons to find)

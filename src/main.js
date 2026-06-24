@@ -496,6 +496,47 @@ class Game {
     this.hud.notify("ON FOOT");
   }
 
+  // drop a reinforcement enemy from the sky (capsule) into a rotating section
+  _dropReinforcement() {
+    const SECTIONS = [
+      { c: [-68, 46], tribe: [{ kind: "monster" }] },                       // NW Saurian Brood
+      { c: [92, 54], tribe: [{ kind: "heavy" }, { kind: "robot" }] },        // NE Iron Legion
+      { c: [66, -44], tribe: [{ kind: "sentry" }, { kind: "drone" }] },      // SE Hollow Watch
+      { c: [-50, -40], tribe: [{ hp: 100, speed: 2.6 }] },                   // SW Vault Garrison
+    ];
+    const s = SECTIONS[(this._reinfIdx = (this._reinfIdx || 0) + 1) % SECTIONS.length];
+    const spec = { ...s.tribe[Math.floor(Math.random() * s.tribe.length)] };
+    const a = Math.random() * 6.28, r = Math.random() * 26;
+    spec.x = s.c[0] + Math.cos(a) * r; spec.z = s.c[1] + Math.sin(a) * r;
+    const gy = this.level.terrainHeight ? this.level.terrainHeight(spec.x, spec.z) : 0;
+    if (gy < 0.6) return; // not into the sea
+    const pod = new THREE.Group();
+    const steel = new THREE.MeshStandardMaterial({ color: 0x6a7078, metalness: 0.7, roughness: 0.45 });
+    const glow = new THREE.MeshStandardMaterial({ color: 0xffb45a, emissive: 0xff5a1a, emissiveIntensity: 2.2 });
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.05, 2.2, 8), steel); body.position.y = 1.4; pod.add(body);
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(1.05, 1.4, 8), new THREE.MeshStandardMaterial({ color: 0x32363c, metalness: 0.6 })); nose.rotation.x = Math.PI; pod.add(nose);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.22, 0.1, 8, 16), glow); ring.rotation.x = Math.PI / 2; ring.position.y = 0.65; pod.add(ring);
+    pod.position.set(spec.x, 230, spec.z); this.scene.add(pod);
+    (this._reinf || (this._reinf = [])).push({ pod, spec, gy, vy: 0 });
+  }
+
+  _updateReinforcements(dt) {
+    if (!this._reinf || !this._reinf.length) return;
+    for (let i = this._reinf.length - 1; i >= 0; i--) {
+      const r = this._reinf[i];
+      r.vy += 70 * dt; r.pod.position.y -= r.vy * dt; r.pod.rotation.y += dt * 2;
+      this.vfx.rocketTrail(new THREE.Vector3(r.pod.position.x + (Math.random() - 0.5) * 1.4, r.pod.position.y + 2.5 + Math.random() * 2, r.pod.position.z + (Math.random() - 0.5) * 1.4));
+      if (r.pod.position.y <= r.gy + 0.3) { // IMPACT — cool boom, then the enemy emerges
+        this._reinf.splice(i, 1); this.scene.remove(r.pod);
+        const c = new THREE.Vector3(r.spec.x, r.gy + 0.6, r.spec.z);
+        for (let k = 0; k < 5; k++) this.vfx.explosion(c.clone().add(new THREE.Vector3((Math.random() - 0.5) * 5, Math.random() * 1.5, (Math.random() - 0.5) * 5)), 2 + Math.random());
+        this.vfx._shockwave?.(c); for (let k = 0; k < 8; k++) this.vfx.dustBurst(c.clone().add(new THREE.Vector3((Math.random() - 0.5) * 9, 0.3, (Math.random() - 0.5) * 9)));
+        this.audio.explosion?.();
+        this.combat.spawnEnemy(r.spec);
+      }
+    }
+  }
+
   _updateProjectiles(dt) {
     for (let i = this._projectiles.length - 1; i >= 0; i--) {
       const p = this._projectiles[i];
@@ -692,7 +733,18 @@ class Game {
       const fwd = this._fwdTmp || (this._fwdTmp = new THREE.Vector3()); this.camera.getWorldDirection(fwd);
       this.hud.drawMinimap({ px: pp.x, pz: pp.z, yaw: Math.atan2(fwd.x, -fwd.z), range: 55, enemies: this.combat.enemies, arcs: this.level.arcs || [], terrain: this.level.terrainHeight, sea: this.level.seaLevel || 0 });
     }
+    // bright-yellow arrow under the objective → points to the nearest un-collected arc
+    if (this.level.arcs && this.hud.setArcArrow) {
+      const fwd = this._fwdTmp || (this._fwdTmp = new THREE.Vector3()); this.camera.getWorldDirection(fwd);
+      let bdx = 0, bdz = 0, bd = Infinity, found = false;
+      for (const a of this.level.arcs) { if (a.taken) continue; const dx = a.x - pp.x, dz = a.z - pp.z, d = dx * dx + dz * dz; if (d < bd) { bd = d; bdx = dx; bdz = dz; found = true; } }
+      this.hud.setArcArrow(found ? Math.atan2(bdx, bdz) - Math.atan2(fwd.x, fwd.z) : null);
+    }
     this._updateProjectiles(dt);
+    // enemy reinforcements: drop a fresh enemy in a different section every 3s
+    this._reinfT = (this._reinfT || 0) + dt;
+    if (this._reinfT >= 5 && this.combat.enemies.filter((e) => !e.dead).length < 60) { this._reinfT = 0; this._dropReinforcement(); }
+    this._updateReinforcements(dt);
     this.level.updateDynamics(dt); // explosion-flung props (barrels, etc.)
 
     // ammo pickups — grab a magazine by walking over it (+rounds to reserve)
@@ -782,6 +834,7 @@ class Game {
     else this.hud.setAmmo(this.weapon.A.rifle.mag, this.weapon.A.rifle.reserve, this.weapon.reloading);
     this.hud.setHealth(this.health, this.cfg.player.maxHealth);
     this.hud.setArmor(this.armor, this.maxArmor);
+    this.hud.setJetFuel(this.controller._jetFuel, this.controller.jetMax);
 
     this.objective.update(dt, t, presses);
   }

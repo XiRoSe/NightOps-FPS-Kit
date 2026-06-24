@@ -33,6 +33,7 @@ const CSS = `
 #hostiles{ left:18px; top:16px; text-align:left; }
 #hostiles b{ font-size:26px; font-weight:700; color:var(--hz); line-height:1; }
 #objective{ left:50%; top:18px; transform:translateX(-50%); text-align:center; }
+#arcarrow{ position:absolute; left:50%; top:64px; transform:translate(-50%,0); font-size:30px; line-height:1; color:#ffe23a; text-shadow:0 0 12px rgba(255,214,40,.95); pointer-events:none; z-index:53; opacity:0; transition:opacity .2s; }
 #objective .arrow{ color:var(--hz); }
 
 #health{ left:18px; bottom:18px; min-width:220px; }
@@ -90,6 +91,8 @@ const CSS = `
 #defuse .hint{ font-size:13px; color:var(--dim); letter-spacing:.12em; margin-top:12px; }
 #ammo .nades{ font-size:13px; color:var(--hz); letter-spacing:.14em; margin-top:5px; }
 /* center action prompt (e.g. gunship inbound -> use the launcher) */
+#jetfuel{ position:fixed; top:86px; left:0; right:0; text-align:center; z-index:54; pointer-events:none; font-weight:800; letter-spacing:.2em; color:#ffd23a; text-shadow:0 2px 12px rgba(0,0,0,.75); font-size:1.7vw; opacity:0; transition:opacity .15s; }
+#jetfuel .fi{ filter:saturate(3.2) brightness(1.25) hue-rotate(14deg); } /* tint the flame emoji to match the gold text */
 #prompt{ position:absolute; left:50%; top:44%; transform:translateX(-50%); text-align:center; pointer-events:none;
   background:rgba(18,22,16,.7); border:1px solid var(--hz); padding:10px 24px; opacity:0; transition:opacity .25s; }
 #prompt .p{ font-size:20px; font-weight:700; letter-spacing:.1em; }
@@ -110,10 +113,12 @@ export class HUD {
       <div id="mission" class="panel"><canvas id="minimap" width="150" height="150"></canvas><div class="maptitle op">ARCFALL</div></div>
       <div id="hostiles" class="panel"><div class="lbl">Hostiles</div><b>0</b></div>
       <div id="objective" class="panel"><div class="lbl">Objective</div><div class="obj mil-title">Eliminate hostiles · reach <span class="arrow">EXTRACTION ▲</span></div></div>
+      <div id="arcarrow">▲</div>
       <div id="timer" class="panel hidden"><div class="lbl">Detonation</div><div class="t">3:00</div></div>
       <div id="health" class="panel"><div class="lbl">Vitals</div><div class="row"><b>100</b><span class="dim">HP</span></div><div id="hpbar"><i></i></div><div class="row" id="armorrow"><b class="arm">100</b><span class="dim">ARMOR</span></div><div id="armorbar"><i></i></div></div>
       <div id="ammo" class="panel"><div class="gun">MK-4 CARBINE</div><div class="count"><b>30</b><s> / 150</s></div><div class="nades">✦ GRENADES 5</div></div>
       <div id="prompt"><div class="p"></div></div>
+      <div id="jetfuel"></div>
       <div id="feed"></div>
       <div id="defuse" class="hidden"><div class="box">
         <div class="ttl">⚠ Bomb · Enter Disarm Code</div>
@@ -222,6 +227,11 @@ export class HUD {
     this.hpBar.style.width = pct + "%";
     this.hpBar.style.background = pct > 50 ? "var(--ok)" : pct > 25 ? "var(--hz)" : "var(--danger)";
   }
+  setJetFuel(sec, max) {
+    const el = this._jetEl || (this._jetEl = this.root.querySelector("#jetfuel")); if (!el) return;
+    if (sec < max - 0.05) { el.innerHTML = `<span class="fi">🔥</span> JETPACK ${sec.toFixed(1)}`; el.style.opacity = "1"; }
+    else el.style.opacity = "0";
+  }
   setArmor(armor, max) {
     if (!this.armNum) return;
     armor = Math.max(0, Math.round(armor));
@@ -279,6 +289,11 @@ export class HUD {
   // generic top-left counter (e.g. "Hostiles" remaining, or "Eliminated" kill count)
   setCounter(label, value) { this.root.querySelector("#hostiles .lbl").textContent = label; this.hostiles.textContent = value; }
   setObjective(html) { const o = this.root.querySelector("#objective .obj"); if (o) o.innerHTML = html; }
+  setArcArrow(rad) { // rotate the yellow arrow toward the nearest arc; pass null to hide
+    const el = this._arcEl || (this._arcEl = this.root.querySelector("#arcarrow")); if (!el) return;
+    if (rad === null || rad === undefined) { el.style.opacity = "0"; return; }
+    el.style.opacity = "1"; el.style.transform = `translate(-50%,0) rotate(${rad}rad)`;
+  }
   setOperation(name) { const o = this.root.querySelector("#mission .op"); if (o) o.textContent = name; }
   // top-left minimap: a PLAYER-CENTRED radar (only ~range metres around you, so it's not crowded) —
   // the player sits at the centre (facing arrow), with nearby enemy dots (red) and Arc dots (gold).

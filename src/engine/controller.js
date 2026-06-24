@@ -26,7 +26,8 @@ export class Controller {
     this.vy = 0;
     this.feetY = 0;          // absolute height of the player's feet (0 = ground)
     this.jumpStrength = 7.6; // tuned so you can hop onto ~1.1m crates
-    this.jetForce = 26; // jetpack thrust (strong + fast)
+    this.jetForce = 13; // jetpack thrust
+    this.jetMax = 5; this._jetFuel = 5; // 5s of flight; recharges when you land
     this.gravity = 21;
     this.stepHeight = 0.4;   // anything taller than feet+step blocks; shorter is mountable
     this.onGround = true;
@@ -123,6 +124,7 @@ export class Controller {
     let speed = input.isDown("shift") && !this.crouching ? this.sprintSpeed : this.walkSpeed;
     if (this.crouching) speed *= 0.5;
     if (this.swimming) speed *= 1.15; // 15% faster through the water
+    if (input.isDown("e") && this._jetFuel > 0) speed *= 1.5; // jetpack drives you faster in the move direction while hovering
 
     if (this.moving) {
       dir.normalize().multiplyScalar(speed * dt);
@@ -147,9 +149,9 @@ export class Controller {
     if (jp && !this._jumpWas && this.onGround && !this.crouching) { this.vy = this.jumpStrength; this.onGround = false; }
     this._jumpWas = jp;
 
-    // JETPACK (hold E) — strong, fast, unlimited upward thrust
-    this.jetting = input.isDown("e") && !this.swimming;
-    if (this.jetting) { this.vy = this.jetForce; this.onGround = false; }
+    // JETPACK (hold E) — strong, fast; 5s of fuel that recharges when you land
+    this.jetting = input.isDown("e") && !this.swimming && this._jetFuel > 0;
+    if (this.jetting) { this.vy = this.jetForce; this.onGround = false; this._jetFuel = Math.max(0, this._jetFuel - dt); }
 
     // vertical physics against the surface beneath us (lets you land on crates/platforms)
     this.feetY += this.vy * dt;
@@ -165,6 +167,7 @@ export class Controller {
       if (this.feetY <= groundY) { this.feetY = groundY; this.vy = 0; this.onGround = true; }
       else this.onGround = false;
     }
+    if ((this.onGround || this.swimming) && !this.jetting) this._jetFuel = this.jetMax; // recharge jetpack on the ground/water
 
     const bobAmt = this.swimming ? Math.sin(this.bob * 0.8) * 0.08 : (this.moving && this.onGround) ? Math.sin(this.bob) * 0.045 : Math.sin(this.bob) * 0.012;
     this.camera.position.y = this.feetY + this.eyeCur + bobAmt;
