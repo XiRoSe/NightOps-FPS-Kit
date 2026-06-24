@@ -749,12 +749,12 @@ class Game {
 
     // HUD sync (ammo readout swaps to rockets in launcher mode)
     const wm = this.weapon.mode;
-    if (wm === "launcher") this.hud.setAmmo(this.weapon.rockets, 0, false);
-    else if (wm === "laser") this.hud.setAmmo(this.weapon.laserAmmo, "∞", false);
-    else if (wm === "shotgun") this.hud.setAmmo(this.weapon.shotgunAmmo, "∞", false);
-    else if (this.weapon.guns[wm]) this.hud.setAmmo(this.weapon.gunAmmo[wm], "∞", false);
-    else if (wm === "plasma") this.hud.setAmmo(this.weapon.plasmaAmmo, "∞", false);
-    else if (wm === "sword") this.hud.setAmmo("∞", "∞", false);
+    if (wm === "launcher") this.hud.setAmmo(this.weapon.rockets, null, false);
+    else if (wm === "laser") this.hud.setAmmo(this.weapon.laserAmmo, null, false);
+    else if (wm === "shotgun") this.hud.setAmmo(this.weapon.shotgunAmmo, null, false);
+    else if (this.weapon.guns[wm]) this.hud.setAmmo(this.weapon.gunAmmo[wm], null, false);
+    else if (wm === "plasma") this.hud.setAmmo(this.weapon.plasmaAmmo, null, false);
+    else if (wm === "sword") this.hud.setAmmo("∞", null, false);
     else this.hud.setAmmo(this.weapon.ammo, this.weapon.reserve, this.weapon.reloading);
     this.hud.setHealth(this.health, this.cfg.player.maxHealth);
 

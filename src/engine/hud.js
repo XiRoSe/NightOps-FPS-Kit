@@ -218,8 +218,9 @@ export class HUD {
     this.hpBar.style.background = pct > 50 ? "var(--ok)" : pct > 25 ? "var(--hz)" : "var(--danger)";
   }
   setAmmo(ammo, reserve, reloading) {
-    this.ammoCount.innerHTML = `<b>${reloading ? "––" : ammo}</b><s> / ${reserve}</s>`;
-    this.ammoEl.classList.toggle("low", !reloading && ammo <= 6);
+    const r = (reserve === null || reserve === undefined || reserve === "") ? "" : `<s> / ${reserve}</s>`;
+    this.ammoCount.innerHTML = `<b>${reloading ? "––" : ammo}</b>${r}`;
+    this.ammoEl.classList.toggle("low", !reloading && typeof ammo === "number" && ammo <= 6);
   }
   setHostiles(n) { this.hostiles.textContent = n; }
   setGrenades(n) { const e = this.root.querySelector("#ammo .nades"); if (e) e.textContent = `✦ GRENADES ${n}`; }

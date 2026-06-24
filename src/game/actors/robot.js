@@ -44,8 +44,9 @@ export class Robot {
     this.hitbox.position.y = cfg.hbH / 2; this.hitbox.userData.enemy = this; this.group.add(this.hitbox);
     this.boss = !!spawn.boss;
     this._bossCd = 4 + Math.random() * 2; this._charging = false; this._charge = 0; // chest-laser cycle
-    // the bipedal mech ("robot") form is always a GIANT; boss is bigger still
-    const sc = spawn.scale || (this.kind === "robot" ? 1.8 : 1);
+    // the bipedal mech ("robot") form is a boss-class GIANT (chest laser + big)
+    const sc = spawn.scale || (this.kind === "robot" ? 2.0 : 1);
+    this._hasBeam = this.boss || this.kind === "robot"; // all mechs charge the chest laser
     this._chestY = 5.5 * sc; // high up on the chest of the giant
     if (sc !== 1) { this.model && this.model.scale.multiplyScalar(sc); this.hitbox.scale.setScalar(sc); this.hitbox.position.y = cfg.hbH / 2 * sc; this.cfg = { ...cfg, boom: cfg.boom * sc }; }
   }
@@ -116,7 +117,7 @@ export class Robot {
     } else this._play("idle");
     const bob = this.fly ? Math.sin(performance.now() * 0.003 + this.pos.x) * 0.4 : 0;
     this.group.position.set(this.pos.x, flyY + bob, this.pos.z);
-    if (this.boss && d < 110) { this._bossBeam(dt, playerPos, ctx); } // giant chest laser
+    if (this._hasBeam && d < 110) { this._bossBeam(dt, playerPos, ctx); } // giant chest laser (boss + all mechs)
     if ((this._fireCd -= dt) <= 0 && d < this.cfg.range + 8 && !this.level.segmentBlocked(this.pos.x, this.pos.z, playerPos.x, playerPos.z, 1.8)) {
       this._fireCd = this.cfg.rate + Math.random() * 0.8;
       this._play("shoot", 0.08, true);
