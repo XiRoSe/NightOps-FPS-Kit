@@ -45,7 +45,7 @@ export class Robot {
     this.boss = !!spawn.boss;
     this._bossCd = 4 + Math.random() * 2; this._charging = false; this._charge = 0; // chest-laser cycle
     // the bipedal mech ("robot") form is a boss-class GIANT (chest laser + big)
-    const sc = spawn.scale || (this.kind === "robot" ? 2.0 : 1);
+    const sc = spawn.scale || (this.kind === "robot" ? 2.0 : 1); this._scale = sc;
     this._hasBeam = this.boss || this.kind === "robot"; // all mechs charge the chest laser
     this._chestY = 5.5 * sc; // high up on the chest of the giant
     if (sc !== 1) { this.model && this.model.scale.multiplyScalar(sc); this.hitbox.scale.setScalar(sc); this.hitbox.position.y = cfg.hbH / 2 * sc; this.cfg = { ...cfg, boom: cfg.boom * sc }; }
@@ -67,6 +67,7 @@ export class Robot {
     this.yaw = Math.atan2(wx, wz); this.group.rotation.y = this.yaw;
     const gy = this.level.terrainHeight ? this.level.terrainHeight(this.pos.x, this.pos.z) : 0;
     this.group.position.set(this.pos.x, gy + (this.fly || 0), this.pos.z);
+    if (this.mixer) this.mixer.timeScale = Math.max(0.4, Math.min(1.2, (this.speed * 0.45) / (3.5 * this._scale))); // wander legs match slow drift
     this._play(this.fly || this.speed > 3 ? "run" : "walk");
   }
 
@@ -108,7 +109,7 @@ export class Robot {
   }
 
   takeDamage(dmg) { if (this.dead) return; this.hp -= dmg; if (this.hp <= 0) this._die(); }
-  _die() { this.dead = true; this.hitbox.userData.enemy = null; this.hitbox.visible = false; this._deathT = 2.0; this._needBoom = true; this._play("dea", 0.12, true); }
+  _die() { this.dead = true; if (this.mixer) this.mixer.timeScale = 1; this.hitbox.userData.enemy = null; this.hitbox.visible = false; this._deathT = 2.0; this._needBoom = true; this._play("dea", 0.12, true); }
 
   update(dt, playerPos, ctx) {
     this.mixer?.update(dt);
@@ -132,8 +133,9 @@ export class Robot {
       const nx = this.pos.x + (dx / d) * step, nz = this.pos.z + (dz / d) * step;
       if (!this._blocked(nx, this.pos.z)) this.pos.x = nx;
       if (!this._blocked(this.pos.x, nz)) this.pos.z = nz;
+      if (this.mixer) this.mixer.timeScale = Math.max(0.45, Math.min(1.3, this.speed / (3.5 * this._scale))); // legs match ground speed/size
       this._play(this.fly || this.speed > 3 ? "run" : "walk");
-    } else this._play("idle");
+    } else { if (this.mixer) this.mixer.timeScale = 1; this._play("idle"); }
     const bob = this.fly ? Math.sin(performance.now() * 0.003 + this.pos.x) * 0.4 : 0;
     this.group.position.set(this.pos.x, flyY + bob, this.pos.z);
     if (this._hasBeam && d < 110) { this._bossBeam(dt, playerPos, ctx); } // giant chest laser (boss + all mechs)

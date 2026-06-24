@@ -197,7 +197,7 @@ export class Weapon {
     swap(this.energy, "plasma", [0, -Math.PI / 2, 0], [0, 0, 0.1]);
     swap(this.laserGun, "laser", [0, -Math.PI / 2, 0], [0, 0, 0.1]);
     swap(this.shotgunGun, "shotgun", [0, -Math.PI / 2, 0], [0, 0, 0.1]);
-    swap(this.sword, "sword", [0, 0, 0], [0, 0, 0]); this.sword.scale.setScalar(1.85); // real GLB sword — oriented/animated by the swing code
+    swap(this.sword, "sword", [0, 0, 0], [0, 0, 0]); this.sword.scale.setScalar(2.05); // real GLB sword — oriented/animated by the swing code
     for (const key of ["smg", "minigun", "railgun"]) { // generic-gun viewmodels (swapped into one slot)
       const m = makeFpWeapon(key); if (m) { m.rotation.set(0, -Math.PI / 2, 0); m.position.set(0, 0, 0.1); this._gunModels[key] = m; }
     }
@@ -326,8 +326,8 @@ export class Weapon {
     if (this.sword.visible) {
       const a = this._swingT > 0 ? Math.sin((1 - (this._swingT -= dt) / 0.32) * Math.PI) : 0;
       // held up-forward-RIGHT at rest → chop DOWN, FORWARD and across to the lower-LEFT; grip stays near the camera
-      this.sword.rotation.set(-0.62 - a * 1.3, 0.2 - a * 0.3, 0.45 + a * 1.7);
-      this.sword.position.set(0.3 - a * 0.15, -0.58 - a * 0.04, -0.44 - a * 0.2); // lower + closer (handle off-screen), lunges further forward on the strike
+      this.sword.rotation.set(-0.62 - a * 0.97, 0.2 - a * 0.3, 0.45 + a * 1.7); // ~75% of the prior downward travel
+      this.sword.position.set(0.3 - a * 0.15, -0.58 - a * 0.04, -0.42 - a * 0.34); // closer + lunges well FORWARD on the strike
       if (this._swingT < 0) this._swingT = 0;
     }
 
