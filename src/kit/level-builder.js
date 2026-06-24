@@ -539,7 +539,7 @@ export class LevelBuilder {
   // clustered forests with clearings between (rather than a uniform sprinkle)
   // ancient ruins: a stone slab with broken columns of varying height + a fallen lintel (terrain-seated)
   ruin(x, z) {
-    const gy = this._groundY(x, z), stone = 0xcabfa6;
+    const gy = this._lowGround(x, z, 4), stone = 0xcabfa6; // seat the 8x8 slab at the lowest corner (no float)
     const slab = box(8, 0.4, 8, 0xb6ab93, { roughness: 0.95 }); slab.position.set(x, gy + 0.2, z); slab.receiveShadow = true; this.scene.add(slab);
     (this.collide(x, z, 8, 8, 0.4)).baseY = gy;
     for (const [dx, dz] of [[-3, -3], [3, -3], [-3, 3], [3, 3], [0, -3.2], [-3.2, 0.5]]) {
@@ -570,7 +570,8 @@ export class LevelBuilder {
   // A grand open temple/palace the player can climb into: a stepped stone base reached by a front
   // staircase, a ring of columns under a roof, and a glowing centerpiece inside. Terrain-seated.
   palace(x, z) {
-    const gy = this._groundY(x, z), W = 16, baseH = 3.2, colH = 7, stone = 0xd9d0ba, stoneDark = 0xb6ab93;
+    const W = 16, baseH = 3.2, colH = 7, stone = 0xd9d0ba, stoneDark = 0xb6ab93;
+    const gy = this._lowGround(x, z, (W + 6) / 2); // seat the wide base at the lowest corner (no float)
     for (let s = 0; s < 3; s++) { // stepped base
       const sw = W + 6 - s * 2, b = box(sw, baseH / 3 + 0.08, sw, s < 2 ? stoneDark : stone, { roughness: 0.92 });
       b.position.set(x, gy + (s + 0.5) * (baseH / 3), z); b.receiveShadow = true; this.scene.add(b);
@@ -624,6 +625,8 @@ export class LevelBuilder {
 
   // ground elevation at (x,z) for the current level (0 if flat). Set by islandTerrain().
   _groundY(x, z) { return this.terrainHeight ? this.terrainHeight(x, z) : 0; }
+  // lowest terrain under a square footprint — seat flat structures here so no edge floats off a slope
+  _lowGround(x, z, half) { let m = this._groundY(x, z); for (const [dx, dz] of [[-half, -half], [half, -half], [-half, half], [half, half]]) m = Math.min(m, this._groundY(x + dx, z + dz)); return m; }
 
   // a driveable car (press E to get in); collected into level.cars for the game loop to drive
   car(x, z, type) { (this.cars ||= []).push(new Car(this.scene, x, z, this, type)); }
