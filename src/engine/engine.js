@@ -109,15 +109,21 @@ export class Engine {
     const g = x.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, "#2f6fd0"); g.addColorStop(0.5, "#7fb0ea"); g.addColorStop(0.82, "#bfe0f4"); g.addColorStop(1, "#dfeede");
     x.fillStyle = g; x.fillRect(0, 0, W, H);
-    // soft, wide, flat cloud wisps high in the sky (gentle — not blobby)
-    for (let i = 0; i < 9; i++) {
-      const cx = Math.random() * W, cy = 36 + Math.random() * H * 0.32, puffs = 5 + Math.floor(Math.random() * 4);
-      for (let j = 0; j < puffs; j++) {
-        const px = cx + (j - puffs / 2) * (44 + Math.random() * 28), py = cy + (Math.random() - 0.5) * 22, rx = 78 + Math.random() * 90, ry = rx * 0.42;
-        const cg = x.createRadialGradient(px, py, 0, px, py, rx);
-        cg.addColorStop(0, "rgba(255,255,255,0.42)"); cg.addColorStop(0.65, "rgba(255,255,255,0.12)"); cg.addColorStop(1, "rgba(255,255,255,0)");
-        x.save(); x.translate(px, py); x.scale(1, ry / rx); x.translate(-px, -py);
-        x.fillStyle = cg; x.beginPath(); x.arc(px, py, rx, 0, 7); x.fill(); x.restore();
+    // painterly cumulus clouds: each is a cluster of soft white puffs sitting on a flat shaded base
+    const puff = (px, py, r, col, alpha) => {
+      const cg = x.createRadialGradient(px, py - r * 0.2, r * 0.1, px, py, r);
+      cg.addColorStop(0, `rgba(${col},${alpha})`); cg.addColorStop(0.7, `rgba(${col},${alpha * 0.5})`); cg.addColorStop(1, `rgba(${col},0)`);
+      x.fillStyle = cg; x.beginPath(); x.arc(px, py, r, 0, 7); x.fill();
+    };
+    for (let i = 0; i < 8; i++) {
+      const cx = Math.random() * W, cy = 70 + Math.random() * H * 0.3, s = 0.8 + Math.random() * 0.9, n = 5 + Math.floor(Math.random() * 4), base = cy + 26 * s;
+      for (let j = 0; j < n; j++) { // shaded grey underbellies first
+        const px = cx + (j - n / 2) * 52 * s, r = (40 + Math.random() * 34) * s;
+        puff(px, base, r, "200,210,222", 0.5);
+      }
+      for (let j = 0; j < n; j++) { // bright tops stacked above
+        const px = cx + (j - n / 2) * 50 * s + (Math.random() - 0.5) * 20, py = cy + (Math.random() - 0.6) * 26 * s, r = (44 + Math.random() * 40) * s;
+        puff(px, py, r, "255,255,255", 0.92);
       }
     }
     const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
