@@ -63,9 +63,9 @@ export class Robot {
         ctx.vfx && ctx.vfx.bossBeam && ctx.vfx.bossBeam(from, beamEnd);
         for (let i = 1; i <= 6; i++) ctx.vfx && ctx.vfx.explosion && ctx.vfx.explosion(from.clone().lerp(to, i / 6), 1.6 + i * 0.25); // bigger booms toward the impact
         ctx.vfx && ctx.vfx._shockwave && ctx.vfx._shockwave(to);
-        ctx.audio && ctx.audio.laser && ctx.audio.laser(0.72); ctx.audio && ctx.audio.explosion && ctx.audio.explosion(); // giant's laser (full) + boom
+        ctx.audio && ctx.audio.beam && ctx.audio.beam(0.95); ctx.audio && ctx.audio.explosion && ctx.audio.explosion(); // giant's beam (full) + boom
         ctx.onBossBeam && ctx.onBossBeam();
-        ctx.onPlayerHit && ctx.onPlayerHit(34 + Math.floor(Math.random() * 22));
+        ctx.onPlayerHit && ctx.onPlayerHit(17 + Math.floor(Math.random() * 11)); // halved beam damage
       }
     } else if ((this._bossCd -= dt) <= 0) {
       this._charging = true; this._charge = 0; ctx.audio && ctx.audio.zap && ctx.audio.zap(); // charge whine
@@ -121,7 +121,7 @@ export class Robot {
       this._gunTip.getWorldPosition(this._muzzle);
       ctx.vfx?.muzzle?.(this._muzzle);
       (ctx.vfx?.enemyLaser ? ctx.vfx.enemyLaser(this._muzzle, this._tmp.set(playerPos.x, playerPos.y - 0.1, playerPos.z), this._laserColor) : ctx.vfx?.tracer?.(this._muzzle, this._tmp.set(playerPos.x, playerPos.y - 0.1, playerPos.z)));
-      ctx.audio?.laser?.(0.5); // small robots: laser beam at ~70% of the giant's volume
+      ctx.audio?.beam?.(0.5); // small robots: sci-fi laser BEAM at ~70% of the giant's volume
       if (Math.random() < 0.5) ctx.onPlayerHit?.(this.cfg.dmg[0] + Math.floor(Math.random() * (this.cfg.dmg[1] - this.cfg.dmg[0])));
     }
   }

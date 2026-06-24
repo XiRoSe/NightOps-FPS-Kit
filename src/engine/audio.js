@@ -150,6 +150,7 @@ export class Audio {
   plasma() { if (this.playBuf("plasma", 0.5, 0.9 + Math.random() * 0.12)) return; this._tone(560, 0.2, "sawtooth", 0.3, 150); this._noiseBurst(0.12, 1400, 1, 0.12, "bandpass"); }
   zap() { if (this.playBuf("zap", 0.4)) return; this._noiseBurst(0.18, 3200, 0.6, 0.22, "bandpass"); this._tone(1000, 0.12, "square", 0.16, 2000); }
   laser(vol = 0.5) { if (this.playBuf("laser", vol, 1.4 + Math.random() * 0.15)) return; this._tone(880, 0.09, "square", 0.16 * (vol / 0.5), 300); this._noiseBurst(0.05, 2200, 1, 0.05); }
+  beam(vol = 0.5) { if (this.playBuf("plasma", vol, 1.5 + Math.random() * 0.2)) return; this._tone(700, 0.16, "sawtooth", 0.2 * (vol / 0.5), 170); this._noiseBurst(0.1, 1800, 1, 0.06, "bandpass"); } // sci-fi laser BEAM
   swordSwing() { if (this.playBuf("sword", 0.6, 0.95 + Math.random() * 0.1)) return; this._noiseBurst(0.2, 760, 0.6, 0.18, "bandpass"); }
   thunder() { if (this.playBuf("thunder", 0.35, 0.7 + Math.random() * 0.2)) return; this._noiseBurst(0.9, 220, 0.5, 0.22); this._tone(52, 0.8, "sawtooth", 0.16, 26); } // storm rumble (quieter)
   splash() { if (this.playBuf("splash", 0.5, 0.9 + Math.random() * 0.2)) return; this._noiseBurst(0.32, 1300, 0.7, 0.32); } // water entry
