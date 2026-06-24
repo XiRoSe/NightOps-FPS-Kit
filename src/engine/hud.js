@@ -26,11 +26,11 @@ const CSS = `
 .panel{ position:absolute; background:var(--panel); border:1px solid var(--line);
   padding:8px 14px; backdrop-filter:blur(2px); }
 .panel .lbl{ font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.18em; }
-#mission{ left:18px; top:16px; padding:8px; }
+#mission{ right:18px; top:16px; padding:8px; }
 #mission .op{ font-size:15px; }
 #minimap{ display:block; width:150px; height:150px; border-radius:6px; }
 #mission .maptitle{ font-size:11px; color:var(--dim); letter-spacing:.18em; text-align:center; margin-top:5px; }
-#hostiles{ right:18px; top:16px; text-align:right; }
+#hostiles{ left:18px; top:16px; text-align:left; }
 #hostiles b{ font-size:26px; font-weight:700; color:var(--hz); line-height:1; }
 #objective{ left:50%; top:18px; transform:translateX(-50%); text-align:center; }
 #objective .arrow{ color:var(--hz); }
@@ -262,19 +262,37 @@ export class HUD {
   setCounter(label, value) { this.root.querySelector("#hostiles .lbl").textContent = label; this.hostiles.textContent = value; }
   setObjective(html) { const o = this.root.querySelector("#objective .obj"); if (o) o.innerHTML = html; }
   setOperation(name) { const o = this.root.querySelector("#mission .op"); if (o) o.textContent = name; }
-  // top-left minimap: island + the player (facing arrow), live enemy dots (red) and Arc dots (gold)
-  drawMinimap({ px, pz, yaw, R = 240, enemies = [], arcs = [] }) {
+  // top-left minimap: a PLAYER-CENTRED radar (only ~range metres around you, so it's not crowded) —
+  // the player sits at the centre (facing arrow), with nearby enemy dots (red) and Arc dots (gold).
+  drawMinimap({ px, pz, yaw, range = 50, enemies = [], arcs = [], terrain = null, sea = 0 }) {
     const cv = this._mini || (this._mini = this.root.querySelector("#minimap")); if (!cv) return;
     const x = this._miniCtx || (this._miniCtx = cv.getContext("2d")), W = cv.width, H = cv.height, cx = W / 2, cy = H / 2;
-    const toX = (wx) => cx + (wx / R) * (W / 2 - 6), toY = (wz) => cy + (wz / R) * (H / 2 - 6);
+    const rad = W * 0.47, sc = (rad - 3) / range; // pixels per world metre
     x.clearRect(0, 0, W, H);
-    x.fillStyle = "rgba(20,12,32,0.55)"; x.fillRect(0, 0, W, H);
-    x.fillStyle = "rgba(90,70,120,0.35)"; x.beginPath(); x.arc(cx, cy, W * 0.46, 0, 7); x.fill(); // island disc
-    for (const a of arcs) if (!a.taken) { x.fillStyle = "#ffd23a"; x.beginPath(); x.arc(toX(a.x), toY(a.z), 2.4, 0, 7); x.fill(); }
-    for (const e of enemies) if (!e.dead) { x.fillStyle = e.boss ? "#ff8a2a" : "#ff3b30"; x.beginPath(); x.arc(toX(e.pos.x), toY(e.pos.z), e.boss ? 4 : 2.6, 0, 7); x.fill(); }
-    // player arrow (rotated by facing yaw)
-    const PX = toX(px), PY = toY(pz);
-    x.save(); x.translate(PX, PY); x.rotate(yaw); x.fillStyle = "#ffffff";
+    x.save(); x.beginPath(); x.arc(cx, cy, rad, 0, 7); x.clip();
+    x.fillStyle = "rgba(20,12,32,0.6)"; x.fillRect(0, 0, W, H);
+    // greenish terrain shading by elevation (water → beach → grass → mountain)
+    if (terrain) {
+      const N = 13, cell = (rad * 2) / N;
+      for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+        const sx = cx - rad + (i + 0.5) * cell, sy = cy - rad + (j + 0.5) * cell;
+        if ((sx - cx) ** 2 + (sy - cy) ** 2 > rad * rad) continue;
+        const h = terrain(px + (sx - cx) / sc, pz + (sy - cy) / sc);
+        let col;
+        if (h < sea) col = "#22617e";                                   // water
+        else if (h < 1.2) col = "#8f8052";                              // beach
+        else if (h > 16) col = "#6b6660";                               // mountain
+        else { const tt = Math.min(1, (h - 1.2) / 14); col = `rgb(${56 + (tt * 26) | 0},${128 - (tt * 46) | 0},${52 + (tt * 8) | 0})`; } // grass (darker higher)
+        x.fillStyle = col; x.fillRect(sx - cell / 2 - 0.5, sy - cell / 2 - 0.5, cell + 1, cell + 1);
+      }
+    }
+    const dot = (wx, wz, col, r) => { const dx = (wx - px) * sc, dy = (wz - pz) * sc; if (dx * dx + dy * dy > (rad - 2) * (rad - 2)) return; x.fillStyle = col; x.beginPath(); x.arc(cx + dx, cy + dy, r, 0, 7); x.fill(); };
+    for (const a of arcs) if (!a.taken) dot(a.x, a.z, "#ffd23a", 2.6);
+    for (const e of enemies) if (!e.dead) dot(e.pos.x, e.pos.z, e.boss ? "#ff8a2a" : "#ff3b30", e.boss ? 4.5 : 3);
+    x.restore();
+    x.strokeStyle = "rgba(130,110,160,0.5)"; x.lineWidth = 1.5; x.beginPath(); x.arc(cx, cy, rad, 0, 7); x.stroke(); // range ring
+    // player facing-arrow, fixed at the centre
+    x.save(); x.translate(cx, cy); x.rotate(yaw); x.fillStyle = "#ffffff";
     x.beginPath(); x.moveTo(0, -6); x.lineTo(4, 5); x.lineTo(0, 2); x.lineTo(-4, 5); x.closePath(); x.fill(); x.restore();
   }
 

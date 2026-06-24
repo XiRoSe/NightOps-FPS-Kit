@@ -660,7 +660,7 @@ class Game {
     // minimap: player (facing arrow), enemies (red), arcs (gold)
     if (this.hud.drawMinimap) {
       const fwd = this._fwdTmp || (this._fwdTmp = new THREE.Vector3()); this.camera.getWorldDirection(fwd);
-      this.hud.drawMinimap({ px: pp.x, pz: pp.z, yaw: Math.atan2(fwd.x, -fwd.z), R: 245, enemies: this.combat.enemies, arcs: this.level.arcs || [] });
+      this.hud.drawMinimap({ px: pp.x, pz: pp.z, yaw: Math.atan2(fwd.x, -fwd.z), range: 55, enemies: this.combat.enemies, arcs: this.level.arcs || [], terrain: this.level.terrainHeight, sea: this.level.seaLevel || 0 });
     }
     this._updateProjectiles(dt);
     this.level.updateDynamics(dt); // explosion-flung props (barrels, etc.)
