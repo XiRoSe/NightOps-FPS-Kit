@@ -32,8 +32,11 @@ const CSS = `
 #mission .maptitle{ font-size:11px; color:var(--dim); letter-spacing:.18em; text-align:center; margin-top:5px; }
 #hostiles{ left:18px; top:16px; text-align:left; }
 #hostiles b{ font-size:26px; font-weight:700; color:var(--hz); line-height:1; }
-#objective{ left:50%; top:18px; transform:translateX(-50%); text-align:center; }
-#arcarrow{ position:absolute; left:50%; top:64px; transform:translate(-50%,0); font-size:30px; line-height:1; color:#ffe23a; text-shadow:0 0 12px rgba(255,214,40,.95); pointer-events:none; z-index:53; opacity:0; transition:opacity .2s; }
+#clock{ left:18px; top:92px; text-align:left; }
+#clock b{ font-size:26px; font-weight:700; color:#ffd23a; line-height:1; font-variant-numeric:tabular-nums; }
+#clock.low b{ color:var(--danger); }
+#objective{ left:50%; top:18px; transform:translateX(-50%); text-align:center; position:absolute; }
+#arcarrow{ position:absolute; left:100%; top:50%; margin-left:14px; transform:translateY(-50%); line-height:0; pointer-events:none; z-index:53; opacity:0; transition:opacity .2s; filter:drop-shadow(0 3px 4px rgba(0,0,0,.7)); }
 #objective .arrow{ color:var(--hz); }
 
 #health{ left:18px; bottom:18px; min-width:220px; }
@@ -112,8 +115,9 @@ export class HUD {
       <div id="hitmark"><span></span><span></span><span></span><span></span></div>
       <div id="mission" class="panel"><canvas id="minimap" width="150" height="150"></canvas><div class="maptitle op">ARCFALL</div></div>
       <div id="hostiles" class="panel"><div class="lbl">Hostiles</div><b>0</b></div>
-      <div id="objective" class="panel"><div class="lbl">Objective</div><div class="obj mil-title">Eliminate hostiles · reach <span class="arrow">EXTRACTION ▲</span></div></div>
-      <div id="arcarrow">▲</div>
+      <div id="clock" class="panel"><div class="lbl">Time</div><b>5:00</b></div>
+      <div id="objective" class="panel"><div class="lbl">Objective</div><div class="obj mil-title">Eliminate hostiles · reach <span class="arrow">EXTRACTION ▲</span></div>
+        <div id="arcarrow"><svg viewBox="0 0 48 52" width="44" height="48"><path d="M24 3 L44 30 L31 30 L31 48 L17 48 L17 30 L4 30 Z" fill="#ffce32" stroke="#1a1206" stroke-width="3.5" stroke-linejoin="round"/><path d="M24 9 L38 28 L28 28 L28 28 Z" fill="#fff2a0"/></svg></div></div>
       <div id="timer" class="panel hidden"><div class="lbl">Detonation</div><div class="t">3:00</div></div>
       <div id="health" class="panel"><div class="lbl">Vitals</div><div class="row"><b>100</b><span class="dim">HP</span></div><div id="hpbar"><i></i></div><div class="row" id="armorrow"><b class="arm">100</b><span class="dim">ARMOR</span></div><div id="armorbar"><i></i></div></div>
       <div id="ammo" class="panel"><div class="gun">MK-4 CARBINE</div><div class="count"><b>30</b><s> / 150</s></div><div class="nades">✦ GRENADES 5</div></div>
@@ -144,7 +148,7 @@ export class HUD {
   }
 
   setCombatVisible(v) {
-    ["#xhair", "#mission", "#hostiles", "#objective", "#health", "#ammo"].forEach((s) =>
+    ["#xhair", "#mission", "#hostiles", "#clock", "#objective", "#health", "#ammo"].forEach((s) =>
       this.root.querySelector(s).classList.toggle("hidden", !v));
   }
 
@@ -229,7 +233,7 @@ export class HUD {
   }
   setJetFuel(sec, max) {
     const el = this._jetEl || (this._jetEl = this.root.querySelector("#jetfuel")); if (!el) return;
-    if (sec < max - 0.05) { el.innerHTML = `<span class="fi">🔥</span> JETPACK ${sec.toFixed(1)}`; el.style.opacity = "1"; }
+    if (sec < max - 0.05) { el.innerHTML = `<svg viewBox="0 0 24 24" width="15" height="15" style="vertical-align:-2px"><path fill="#ffd23a" d="M12 23a7 7 0 01-7-7c0-3 2-5 3-7 1 2 2 2 3 2-1-4 0-7 3-11 0 4 2 5 4 8 1 2 1 3 1 5a7 7 0 01-7 10z"/></svg> JETPACK ${sec.toFixed(1)}`; el.style.opacity = "1"; }
     else el.style.opacity = "0";
   }
   setArmor(armor, max) {
@@ -288,11 +292,17 @@ export class HUD {
   hideBanner() { if (this._banner) { this._banner.remove(); this._banner = null; } if (this._bannerT) clearTimeout(this._bannerT); }
   // generic top-left counter (e.g. "Hostiles" remaining, or "Eliminated" kill count)
   setCounter(label, value) { this.root.querySelector("#hostiles .lbl").textContent = label; this.hostiles.textContent = value; }
+  setClock(sec) {
+    const el = this._clockEl || (this._clockEl = this.root.querySelector("#clock")); if (!el) return;
+    sec = Math.max(0, sec); const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+    el.querySelector("b").textContent = `${m}:${s < 10 ? "0" : ""}${s}`;
+    el.classList.toggle("low", sec <= 60);
+  }
   setObjective(html) { const o = this.root.querySelector("#objective .obj"); if (o) o.innerHTML = html; }
   setArcArrow(rad) { // rotate the yellow arrow toward the nearest arc; pass null to hide
     const el = this._arcEl || (this._arcEl = this.root.querySelector("#arcarrow")); if (!el) return;
     if (rad === null || rad === undefined) { el.style.opacity = "0"; return; }
-    el.style.opacity = "1"; el.style.transform = `translate(-50%,0) rotate(${rad}rad)`;
+    el.style.opacity = "1"; el.style.transform = `translateY(-50%) rotate(${rad}rad)`;
   }
   setOperation(name) { const o = this.root.querySelector("#mission .op"); if (o) o.textContent = name; }
   // top-left minimap: a PLAYER-CENTRED radar (only ~range metres around you, so it's not crowded) —

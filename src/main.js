@@ -266,7 +266,7 @@ class Game {
     this.objective.onPlayStart();
     this.hud.setGrenades(this.grenades);
     this.touch.show();
-    if (!this._deployed) { this._deployed = true; this.voice.deploy(); }
+    if (!this._deployed) { this._deployed = true; this.voice.deploy(); this._timeLeft = 300; } // 5:00 mission clock
     this.state = "play";
   }
 
@@ -835,6 +835,11 @@ class Game {
     this.hud.setHealth(this.health, this.cfg.player.maxHealth);
     this.hud.setArmor(this.armor, this.maxArmor);
     this.hud.setJetFuel(this.controller._jetFuel, this.controller.jetMax);
+    // 5-minute mission clock — recover all arcs before it hits zero
+    if (this._timeLeft !== undefined) {
+      this._timeLeft -= dt; this.hud.setClock(this._timeLeft);
+      if (this._timeLeft <= 0) { this._timeLeft = undefined; this._lose("Time ran out", 'Mission <span class="hz">Failed</span>'); }
+    }
 
     this.objective.update(dt, t, presses);
   }
