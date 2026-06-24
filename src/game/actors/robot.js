@@ -44,8 +44,10 @@ export class Robot {
     this.hitbox.position.y = cfg.hbH / 2; this.hitbox.userData.enemy = this; this.group.add(this.hitbox);
     this.boss = !!spawn.boss;
     this._bossCd = 4 + Math.random() * 2; this._charging = false; this._charge = 0; // chest-laser cycle
-    this._chestY = 5.5 * (spawn.scale || 1); // high up on the chest of the giant
-    if (spawn.scale) { this.model && this.model.scale.multiplyScalar(spawn.scale); this.hitbox.scale.setScalar(spawn.scale); this.hitbox.position.y = cfg.hbH / 2 * spawn.scale; this.cfg = { ...cfg, boom: cfg.boom * spawn.scale }; }
+    // the bipedal mech ("robot") form is always a GIANT; boss is bigger still
+    const sc = spawn.scale || (this.kind === "robot" ? 1.8 : 1);
+    this._chestY = 5.5 * sc; // high up on the chest of the giant
+    if (sc !== 1) { this.model && this.model.scale.multiplyScalar(sc); this.hitbox.scale.setScalar(sc); this.hitbox.position.y = cfg.hbH / 2 * sc; this.cfg = { ...cfg, boom: cfg.boom * sc }; }
   }
 
   // THE GUARDIAN's signature: charge a glowing orb at the chest, then unleash a giant laser beam + booms

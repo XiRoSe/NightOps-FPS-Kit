@@ -99,11 +99,11 @@ export class Audio {
     o.start(t); o.stop(t + dur + 0.02);
   }
 
-  shoot() {
-    if (this.playBuf("fire_player", 0.5, 0.96 + Math.random() * 0.08)) return;
-    this._noiseBurst(0.12, 2600, 1.2, 0.55);
-    this._noiseBurst(0.07, 900, 0.8, 0.4);
-    this._tone(120, 0.12, "square", 0.35, 50);
+  shoot(pitch = 1) {
+    if (this.playBuf("fire_player", 0.5, (0.96 + Math.random() * 0.08) * pitch)) return;
+    this._noiseBurst(0.12, 2600 * pitch, 1.2, 0.55);
+    this._noiseBurst(0.07, 900 * pitch, 0.8, 0.4);
+    this._tone(120 * pitch, 0.12, "square", 0.35, 50);
   }
   enemyShot() {
     if (this.playBuf("fire_enemy", 0.22, 0.92 + Math.random() * 0.1)) return;

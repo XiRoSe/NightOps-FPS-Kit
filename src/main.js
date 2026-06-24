@@ -420,7 +420,8 @@ class Game {
         const r = this._rayShot(dir, 200);
         if (r) { end = r.point.clone(); if (r.enemy) { r.enemy.takeDamage(this._falloff(g.dmg, r.dist)); this.vfx.hitPuff(end); } }
       }
-      if (p === 0 || g.pellets <= 3) this.vfx.tracer(start, end);
+      if (g.pierce) { this.vfx.enemyLaser ? this.vfx.enemyLaser(start, end, g.beam) : this.vfx.tracer(start, end); this.vfx._flash && this.vfx._flash(end, 1.4, g.beam); this.vfx._flash && this.vfx._flash(start, 1.0, g.beam); } // railgun: a bold blue beam + flashes
+      else if (p === 0 || g.pellets <= 3) this.vfx.tracer(start, end);
     }
     this._fovKick = Math.min(this._fovKick + g.kick * 8, 6);
   }
