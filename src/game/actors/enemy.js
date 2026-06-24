@@ -350,7 +350,9 @@ export class Enemy {
         this._roam = { x: this._home.x + Math.cos(a) * r, z: this._home.z + Math.sin(a) * r };
         this._roamCd = 3 + Math.random() * 4;
       }
+      const px = this.pos.x, pz = this.pos.z;
       movingNow = !this._moveToward(this._roam.x, this._roam.z, dt, this.speed * 0.6);
+      if (Math.hypot(this.pos.x - px, this.pos.z - pz) < this.speed * 0.6 * dt * 0.3) { if ((this._stuckT = (this._stuckT || 0) + dt) > 2) { this._roam = null; this._stuckT = 0; } } else this._stuckT = 0; // stuck >2s → new spot
       this.yaw = Math.atan2(this._roam.x - this.pos.x, this._roam.z - this.pos.z);
       this._play(movingNow ? (this.actions.Walk ? "Walk" : "Run") : "Idle");
     }

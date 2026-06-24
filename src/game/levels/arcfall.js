@@ -69,6 +69,9 @@ export const arcfall = {
     b.giftCrate(-62, -16, "ammo"); b.giftCrate(96, 12, "health"); b.giftCrate(-100, -26, "grenade");
     // ammo caches spread across every region — collect them to resupply ALL weapons
     for (const [x, z] of [[-84, 58], [108, 50], [86, -64], [-96, -46], [20, 98], [56, 8], [-40, -64]]) b.giftCrate(x, z, "ammo");
+    // health packs (first-aid kits) + armor plates scattered widely — both are scarce
+    for (const [x, z] of [[30, 60], [-60, 30], [80, -20], [-30, -70], [110, 70], [-110, 10], [10, 130], [-20, -10]]) b.giftCrate(x, z, "health");
+    for (const [x, z] of [[50, 20], [-70, -20], [95, 35], [-40, 75], [25, -60], [-100, 50]]) b.giftCrate(x, z, "armor");
     b.giftCrate(24, 14, "plasma");   // PLASMA CANNON near the drop
     b.giftCrate(-50, 70, "laser");   // LASER RIFLE out by the lake
   },

@@ -326,8 +326,9 @@ export class Weapon {
     if (this.sword.visible) {
       const a = this._swingT > 0 ? Math.sin((1 - (this._swingT -= dt) / 0.32) * Math.PI) : 0;
       // held up-forward-RIGHT at rest → chop DOWN, FORWARD and across to the lower-LEFT; grip stays near the camera
-      this.sword.rotation.set(-0.62 - a * 0.95, 0.2 - a * 0.3, 0.45 + a * 1.5); // ~75% downswing; blade ends pointing forward
-      this.sword.position.set(0.3 - a * 0.12, -0.58 - a * 0.03, -0.42 - a * 0.72); // strong FORWARD thrust on the strike
+      // the BLADE (upper part) arcs forward via rotation; the grip stays tucked low-right (off-screen, no hand)
+      this.sword.rotation.set(-0.55 - a * 1.4, 0.2 - a * 0.3, 0.5 + a * 1.5);
+      this.sword.position.set(0.42 - a * 0.05, -0.66 - a * 0.02, -0.48 - a * 0.1);
       if (this._swingT < 0) this._swingT = 0;
     }
 

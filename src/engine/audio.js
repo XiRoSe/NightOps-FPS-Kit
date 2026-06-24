@@ -159,9 +159,11 @@ export class Audio {
     this._tone(380, 0.22, "sine", 0.12, 150);
   }
   shotgun() { if (this.playBuf("shotgun", 0.6, 0.9 + Math.random() * 0.1)) return; this._noiseBurst(0.3, 500, 0.6, 0.5); this._tone(80, 0.2, "sawtooth", 0.3, 40); }
-  wade() { // a wet footstep splash in shallow water
-    this._noiseBurst(0.2, 1500, 0.6, 0.2, "lowpass");
-    this._noiseBurst(0.13, 600, 0.7, 0.12, "lowpass");
+  wade() { // a wet footstep: bright surface splash + a sloosh + a couple of droplet bloops
+    this._noiseBurst(0.18, 2600, 0.4, 0.2, "lowpass");
+    this._noiseBurst(0.26, 760, 0.7, 0.15, "lowpass");
+    this._tone(540, 0.1, "sine", 0.07, 230);
+    setTimeout(() => this._tone(660, 0.08, "sine", 0.05, 300), 55);
   }
   swimStroke() { // gentle water swish of a stroke
     this._noiseBurst(0.34, 1000, 0.6, 0.15, "lowpass");
@@ -170,6 +172,12 @@ export class Audio {
   dropWhoosh() { if (this.playBuf("whoosh", 0.55, 0.8)) return; this._noiseBurst(7.0, 440, 0.4, 0.34); this._tone(190, 7.0, "sawtooth", 0.13, 64); } // descent rush
   creature() { if (this.playBuf("creature", 0.55, 0.7 + Math.random() * 0.25)) return; this._tone(120, 0.34, "sawtooth", 0.3, 64); this._noiseBurst(0.18, 360, 0.8, 0.14); } // growl/bite
   arcGet() { if (this.playBuf("pickup", 0.6)) return; this._tone(660, 0.12, "sine", 0.32); setTimeout(() => this._tone(990, 0.16, "sine", 0.32), 90); setTimeout(() => this._tone(1320, 0.26, "sine", 0.3), 185); }
+  arcFanfare() { // triumphant rising arpeggio + shimmer + a low swell — exciting "Arc recovered!"
+    [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => this._tone(f, 0.22, "triangle", 0.32), i * 80));
+    setTimeout(() => { this._tone(1568, 0.5, "sine", 0.3); this._tone(2093, 0.5, "sine", 0.18); }, 430); // bright capstone chord
+    this._noiseBurst(0.4, 6500, 0.5, 0.12, "highpass");  // sparkle shimmer
+    this._tone(98, 0.6, "sine", 0.22, 60);               // low swell
+  }
   // looping vehicle engine — real engine loop (pitch rises with speed); synth fallback
   startEngine() {
     if (!this.ctx || this._eng) return;

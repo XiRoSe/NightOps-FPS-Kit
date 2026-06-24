@@ -46,7 +46,7 @@ export class CollectObjective {
       if (dx * dx + dz * dz < a.r * a.r) {
         a.taken = true; a.group.visible = false;
         this.collected++;
-        g.audio.arcGet?.(); g.audio.win?.(); // pickup chime + a celebratory flourish
+        g.audio.arcGet?.(); g.audio.arcFanfare?.(); // pickup chime + an exciting triumphant fanfare
         g.hud.showBanner("✦ ARC RECOVERED", `${this.collected} / ${this.total} ARCS COLLECTED`); // center XIII-style
         g.hud.setCounter("Arcs", `${this.collected} / ${this.total}`);
         if (this.beats[this.collected]) g.hud.notify(this.beats[this.collected]);

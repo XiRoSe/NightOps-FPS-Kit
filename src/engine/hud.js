@@ -40,6 +40,9 @@ const CSS = `
 #health b{ font-size:30px; font-weight:700; line-height:1; }
 #hpbar{ height:10px; margin-top:6px; background:rgba(0,0,0,.4); border:1px solid var(--line); }
 #hpbar > i{ display:block; height:100%; width:100%; background:var(--ok); transition:width .15s, background .2s; }
+#armorrow{ margin-top:6px; }
+#armorbar{ height:7px; margin-top:4px; background:rgba(0,0,0,.4); border:1px solid var(--line); }
+#armorbar > i{ display:block; height:100%; width:100%; background:#3a9cff; transition:width .15s; }
 
 #ammo{ right:18px; bottom:18px; text-align:right; min-width:180px; }
 #ammo .gun{ font-size:12px; color:var(--dim); letter-spacing:.2em; }
@@ -108,7 +111,7 @@ export class HUD {
       <div id="hostiles" class="panel"><div class="lbl">Hostiles</div><b>0</b></div>
       <div id="objective" class="panel"><div class="lbl">Objective</div><div class="obj mil-title">Eliminate hostiles · reach <span class="arrow">EXTRACTION ▲</span></div></div>
       <div id="timer" class="panel hidden"><div class="lbl">Detonation</div><div class="t">3:00</div></div>
-      <div id="health" class="panel"><div class="lbl">Vitals</div><div class="row"><b>100</b><span class="dim">HP</span></div><div id="hpbar"><i></i></div></div>
+      <div id="health" class="panel"><div class="lbl">Vitals</div><div class="row"><b>100</b><span class="dim">HP</span></div><div id="hpbar"><i></i></div><div class="row" id="armorrow"><b class="arm">100</b><span class="dim">ARMOR</span></div><div id="armorbar"><i></i></div></div>
       <div id="ammo" class="panel"><div class="gun">MK-4 CARBINE</div><div class="count"><b>30</b><s> / 150</s></div><div class="nades">✦ GRENADES 5</div></div>
       <div id="prompt"><div class="p"></div></div>
       <div id="feed"></div>
@@ -124,6 +127,8 @@ export class HUD {
     this.hostiles = this.root.querySelector("#hostiles b");
     this.hpNum = this.root.querySelector("#health b");
     this.hpBar = this.root.querySelector("#hpbar > i");
+    this.armNum = this.root.querySelector("#health .arm");
+    this.armBar = this.root.querySelector("#armorbar > i");
     this.ammoEl = this.root.querySelector("#ammo");
     this.ammoCount = this.root.querySelector("#ammo .count");
     this.feed = this.root.querySelector("#feed");
@@ -216,6 +221,12 @@ export class HUD {
     const pct = (hp / max) * 100;
     this.hpBar.style.width = pct + "%";
     this.hpBar.style.background = pct > 50 ? "var(--ok)" : pct > 25 ? "var(--hz)" : "var(--danger)";
+  }
+  setArmor(armor, max) {
+    if (!this.armNum) return;
+    armor = Math.max(0, Math.round(armor));
+    this.armNum.textContent = armor;
+    if (this.armBar) { this.armBar.style.width = (armor / max) * 100 + "%"; this.armBar.style.background = "#3a9cff"; }
   }
   setAmmo(ammo, reserve, reloading) {
     const r = (reserve === null || reserve === undefined || reserve === "") ? "" : `<s> / ${reserve}</s>`;

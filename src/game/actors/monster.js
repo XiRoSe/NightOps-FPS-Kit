@@ -49,7 +49,7 @@ export class Monster {
     this._cur = name; this._curAction = next;
   }
 
-  takeDamage(dmg) { if (this.dead) return; this.hp -= dmg; if (this.hp <= 0) this._die(); }
+  takeDamage(dmg) { if (this.dead) return; this.aggro = true; this.hp -= dmg; if (this.hp <= 0) this._die(); } // getting hit makes it charge
   _die() { this.dead = true; this.hitbox.userData.enemy = null; this.hitbox.visible = false; this._deathT = 2.0; this._play("death", 0.12, true); }
 
   update(dt, playerPos, ctx) {
@@ -85,9 +85,11 @@ export class Monster {
     }
     const wx = this._roam.x - this.pos.x, wz = this._roam.z - this.pos.z, wd = Math.hypot(wx, wz) || 1;
     const step = this.speed * 0.4 * dt;
+    const px = this.pos.x, pz = this.pos.z;
     const nx = this.pos.x + (wx / wd) * step, nz = this.pos.z + (wz / wd) * step;
     if (!this._blocked(nx, this.pos.z)) this.pos.x = nx;
     if (!this._blocked(this.pos.x, nz)) this.pos.z = nz;
+    if (Math.hypot(this.pos.x - px, this.pos.z - pz) < step * 0.3) { if ((this._stuckT = (this._stuckT || 0) + dt) > 2) { this._roam = null; this._stuckT = 0; } } else this._stuckT = 0; // stuck >2s → new destination
     this.yaw = Math.atan2(wx, wz); this.group.rotation.y = this.yaw;
     const gy = this.level.terrainHeight ? this.level.terrainHeight(this.pos.x, this.pos.z) : 0;
     this.group.position.set(this.pos.x, gy, this.pos.z);

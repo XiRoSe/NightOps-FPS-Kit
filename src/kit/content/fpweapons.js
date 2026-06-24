@@ -10,6 +10,7 @@ const DEFS = {
   minigun: { url: "/models/weapons/minigun.glb", len: 0.7 },
   railgun: { url: "/models/weapons/railgun.glb", len: 0.72 },
   sword: { url: "/models/weapons/sword.glb", len: 0.7 },
+  medkit: { url: "/models/firstaidkit.glb", len: 0.6 },
 };
 const cache = {};
 

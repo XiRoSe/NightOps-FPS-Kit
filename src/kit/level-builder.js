@@ -453,7 +453,7 @@ export class LevelBuilder {
 
   // a loot gift crate (kind = "ammo" | "grenade" | "health"); collected on proximity by the runner.
   giftCrate(x, z, kind = "ammo") {
-    const C = { ammo: 0xffce73, grenade: 0xd0552e, health: 0x4fd06a, plasma: 0x4fb4ff, laser: 0xff5a3c, shotgun: 0xff8a3a }[kind] || 0xffce73;
+    const C = { ammo: 0xffce73, grenade: 0xd0552e, health: 0x4fd06a, armor: 0x3a9cff, plasma: 0x4fb4ff, laser: 0xff5a3c, shotgun: 0xff8a3a }[kind] || 0xffce73;
     const g = new THREE.Group(); g.position.set(x, this._groundY(x, z), z);
     // a low dark plinth + glow halo, with a distinct floating ICON per pickup kind
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 0.22, 10), mat(0x2c2f36, { roughness: 0.7 })); base.position.y = 0.11; base.castShadow = true;
@@ -471,10 +471,17 @@ export class LevelBuilder {
       const m = makeFpWeapon(kind); if (m) { m.scale.multiplyScalar(1.15); m.rotation.set(0, 0, Math.PI * 0.12); grp.add(m); return grp; }
     }
     if (kind === "health") {
+      const m = makeFpWeapon("medkit"); if (m) { m.scale.multiplyScalar(1.1); grp.add(m); return grp; } // real first-aid kit
       grp.add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.42, 0.42), mat(0xf2f2f2, { roughness: 0.5 })));
       const red = mat(0xe23b3b, { roughness: 0.5 });
       const v = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.3, 0.03), red); v.position.z = 0.22; grp.add(v);
       const h = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.13, 0.03), red); h.position.z = 0.22; grp.add(h);
+    } else if (kind === "armor") { // blue armor plate / vest
+      const blue = mat(0x3a78d8, { metalness: 0.5, roughness: 0.45 });
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.18), blue); grp.add(plate);
+      const sh = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.18, 0.2), blue); sh.position.y = 0.24; grp.add(sh); // shoulders
+      const em = noOutline(new THREE.MeshStandardMaterial({ color: 0x9fd0ff, emissive: 0x3a9cff, emissiveIntensity: 1.6 }));
+      const chev = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 0.03), em); chev.position.set(0, 0.05, 0.1); grp.add(chev);
     } else if (kind === "grenade") {
       const gm = mat(0x3c4a2e, { roughness: 0.6 }), cap = mat(0x9a9a9a, { metalness: 0.6, roughness: 0.4 });
       for (let i = 0; i < 3; i++) { const o = (i - 1) * 0.24, yy = i === 1 ? 0.1 : 0; const b = new THREE.Mesh(new THREE.SphereGeometry(0.17, 8, 8), gm); b.position.set(o, yy, 0); const c = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.12, 6), cap); c.position.set(o, yy + 0.2, 0); grp.add(b, c); }

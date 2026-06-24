@@ -87,6 +87,7 @@ class Game {
     this.objective = makeObjective(this.objType, this);
 
     this.health = this.cfg.player.maxHealth;
+    this.armor = 100; this.maxArmor = 100; // armor soaks damage before health; refilled by armor pickups
     this.grenades = this.cfg.player.grenades ?? 5;
     this._projectiles = [];
     this.shotsFired = 0;
@@ -271,6 +272,7 @@ class Game {
 
   _onPlayerHit(dmg) {
     if (this.state !== "play" || this.driving) return; // safe inside a vehicle
+    if (this.armor > 0) { const a = Math.min(this.armor, dmg * 0.6); this.armor -= a; dmg -= a; this.hud.setArmor?.(this.armor, 100); } // armor soaks 60% until depleted
     this.health -= dmg;
     this.hud.setHealth(this.health, this.cfg.player.maxHealth);
     this.hud.damageFlash();
@@ -515,8 +517,14 @@ class Game {
       }
       if (p.done) {
         const c = p.pos.clone();
-        if (p.energy) this.vfx.energyBoom(c, p.scale || 1); else this.vfx.explosion(c, p.scale || 0.6);
-        this.audio.explosion?.();
+        if (p.energy) this.vfx.energyBoom(c, p.scale || 1);
+        else if (p.isRocket) { // BIG bazooka blast — a cluster of explosions + fireballs + shockwave + shake
+          for (let i = 0; i < 6; i++) this.vfx.explosion(c.clone().add(new THREE.Vector3((Math.random() - 0.5) * 5, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 5)), 2.2 + Math.random() * 0.9);
+          if (this.vfx._fireball) for (let i = 0; i < 5; i++) this.vfx._fireball(c.clone().add(new THREE.Vector3((Math.random() - 0.5) * 4, 0.5 + Math.random() * 2, (Math.random() - 0.5) * 4)), 1.2 + Math.random());
+          this.vfx._shockwave?.(c); this.hud._shake = Math.max(this.hud._shake || 0, 16);
+          this.audio.explosion?.(); setTimeout(() => this.audio.explosion?.(), 80);
+        } else this.vfx.explosion(c, p.scale || 0.6);
+        if (!p.isRocket) this.audio.explosion?.();
         // enemies/props take the big AoE damage; the heli + destructibles use the "unit" scale (below)
         applyBlast(c, { radius: p.radius || 6, damage: p.damage || 200, power: p.power || 15 }, this.combat.enemies, null, this.level.dynamics);
         const units = p.units || (p.isRocket ? this.cfg.balance.units.rocket : this.cfg.balance.units.grenade);
@@ -705,7 +713,8 @@ class Game {
           gf.taken = true; gf.group.visible = false;
           this.audio.playBuf?.("clipin", 0.6);
           if (gf.kind === "grenade") { this.grenades += 2; this.hud.setGrenades(this.grenades); this.hud.notify("+2 GRENADES · GIFT"); }
-          else if (gf.kind === "health") { this.health = Math.min(this.cfg.player.maxHealth, this.health + 40); this.hud.notify("+40 HEALTH · GIFT"); }
+          else if (gf.kind === "health") { this.health = Math.min(this.cfg.player.maxHealth, this.health + 40); this.hud.setHealth(this.health, this.cfg.player.maxHealth); this.hud.notify("+40 HEALTH"); }
+          else if (gf.kind === "armor") { this.armor = Math.min(this.maxArmor, this.armor + 50); this.hud.setArmor(this.armor, this.maxArmor); this.hud.notify("+50 ARMOR"); }
           else if (gf.kind === "plasma" || gf.kind === "laser" || gf.kind === "shotgun") {
             this.weapon.give(gf.kind); this.hud.setWeaponName(this._weaponName(gf.kind));
             this.hud.notify(`✦ ${this._weaponName(gf.kind)} ACQUIRED — Q to cycle`);
@@ -765,6 +774,7 @@ class Game {
     else if (a) this.hud.setAmmo(a.mag, a.reserve, reloading); // mag / reserve (with reload)
     else this.hud.setAmmo(this.weapon.A.rifle.mag, this.weapon.A.rifle.reserve, this.weapon.reloading);
     this.hud.setHealth(this.health, this.cfg.player.maxHealth);
+    this.hud.setArmor(this.armor, this.maxArmor);
 
     this.objective.update(dt, t, presses);
   }
