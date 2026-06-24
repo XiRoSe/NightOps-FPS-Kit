@@ -731,6 +731,7 @@ export class LevelBuilder {
       for (const hl of hills) { const d = Math.hypot(x - hl.x, z - hl.z); if (d < hl.r) y += hl.h * Math.pow(Math.cos(d / hl.r * Math.PI / 2), 2); }
       for (const m of mtns) { const d = Math.hypot(x - m.x, z - m.z); if (d < m.r) y += m.h * Math.pow(Math.cos(d / m.r * Math.PI / 2), 2); } // gentler peaks (climbable, fewer facet gaps)
       if (r > R - 12 && r < R + 4) y *= 0.42;                            // flatten the beach near the waterline
+      if (r > R) y = Math.min(y, 0.4) - (r - R) * (r - R) * 0.006;        // PLUNGE to deep ocean past the shore → the square plane edge sits far underwater (hidden)
       for (const L of lakes) { const d = Math.hypot(x - L.x, z - L.z); if (d < L.r) y -= L.depth * (0.5 + 0.5 * Math.cos((d / L.r) * Math.PI)); }
       return y;
     };
