@@ -121,6 +121,7 @@ export class Controller {
 
     let speed = input.isDown("shift") && !this.crouching ? this.sprintSpeed : this.walkSpeed;
     if (this.crouching) speed *= 0.5;
+    if (this.swimming) speed *= 0.55; // slower in the water
 
     if (this.moving) {
       dir.normalize().multiplyScalar(speed * dt);
@@ -149,10 +150,17 @@ export class Controller {
     this.feetY += this.vy * dt;
     this.vy -= this.gravity * dt;
     const groundY = this._groundUnder(this.camera.position.x, this.camera.position.z);
-    if (this.feetY <= groundY) { this.feetY = groundY; this.vy = 0; this.onGround = true; }
-    else this.onGround = false;
+    const sea = this.level.seaLevel;
+    if (sea !== undefined && groundY < sea - 1.0 && this.feetY < sea - 0.5) {
+      // over deep water → swim: float at the surface (head above) with a gentle bob
+      this.feetY = sea - 0.9; this.vy = 0; this.onGround = false; this.swimming = true;
+    } else {
+      this.swimming = false;
+      if (this.feetY <= groundY) { this.feetY = groundY; this.vy = 0; this.onGround = true; }
+      else this.onGround = false;
+    }
 
-    const bobAmt = (this.moving && this.onGround) ? Math.sin(this.bob) * 0.045 : Math.sin(this.bob) * 0.012;
+    const bobAmt = this.swimming ? Math.sin(this.bob * 0.8) * 0.08 : (this.moving && this.onGround) ? Math.sin(this.bob) * 0.045 : Math.sin(this.bob) * 0.012;
     this.camera.position.y = this.feetY + this.eyeCur + bobAmt;
   }
 }

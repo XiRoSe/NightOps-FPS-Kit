@@ -140,6 +140,9 @@ export class Audio {
   zap() { this._noiseBurst(0.18, 3200, 0.6, 0.22, "bandpass"); this._tone(1000, 0.12, "square", 0.16, 2000); }
   laser() { if (this.playBuf("laser", 0.5, 1.4 + Math.random() * 0.15)) return; this._tone(880, 0.09, "square", 0.16, 300); this._noiseBurst(0.05, 2200, 1, 0.05); }
   swordSwing() { if (this.playBuf("sword", 0.6, 0.95 + Math.random() * 0.1)) return; this._noiseBurst(0.2, 760, 0.6, 0.18, "bandpass"); }
+  thunder() { this._noiseBurst(0.9, 220, 0.5, 0.45); this._tone(52, 0.8, "sawtooth", 0.32, 26); } // storm rumble
+  splash() { this._noiseBurst(0.32, 1300, 0.7, 0.32); } // water entry
+  swimStroke() { this._noiseBurst(0.22, 680, 0.6, 0.14, "bandpass"); } // swim swish
   creature() { this._tone(120, 0.34, "sawtooth", 0.3, 64); this._noiseBurst(0.18, 360, 0.8, 0.14); } // growl/bite
   arcGet() { // ascending recovered-arc chime
     this._tone(660, 0.12, "sine", 0.32);

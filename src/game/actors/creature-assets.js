@@ -18,11 +18,12 @@ export function preloadCreatures() { return Promise.all(Object.values(CREATURES)
 
 // Playable heroes — realistic military operators in 4 loadouts (tint + starting weapon). The operator
 // model itself is preloaded via preloadOperator(); makeHero(tint) builds the tinted instance.
+// each hero carries a DISTINCT weapon loadout (cycle with Q); loadout[0] is equipped on deploy
 export const HERO_LIST = [
-  { id: "assault", label: "Assault", tag: "Balanced · MK-4 Carbine", tint: 0x55603e, weapon: "rifle" },
-  { id: "recon", label: "Recon", tag: "Agile · Laser Rifle", tint: 0x35505e, weapon: "laser" },
-  { id: "heavy", label: "Heavy", tag: "Tanky · Missile Launcher", tint: 0x4a382c, weapon: "launcher" },
-  { id: "marksman", label: "Marksman", tag: "Precision · Plasma Cannon", tint: 0x2c2c34, weapon: "plasma" },
+  { id: "assault", label: "Assault", tag: "Carbine + Arc Blade", tint: 0x55603e, loadout: ["rifle", "sword"] },
+  { id: "recon", label: "Recon", tag: "Laser Rifle + Arc Blade", tint: 0x35505e, loadout: ["laser", "sword"] },
+  { id: "heavy", label: "Heavy", tag: "Missile Launcher + Plasma", tint: 0x4a382c, loadout: ["launcher", "plasma"] },
+  { id: "marksman", label: "Marksman", tag: "Plasma Cannon + Laser", tint: 0x2c2c34, loadout: ["plasma", "laser"] },
 ];
 export const HERO_TINT = Object.fromEntries(HERO_LIST.map((h) => [h.id, h.tint]));
-export const HERO_WEAPON = Object.fromEntries(HERO_LIST.map((h) => [h.id, h.weapon]));
+export const HERO_LOADOUT = Object.fromEntries(HERO_LIST.map((h) => [h.id, h.loadout]));

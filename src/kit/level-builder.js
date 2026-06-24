@@ -626,12 +626,13 @@ export class LevelBuilder {
       for (const L of lakes) { const d = Math.hypot(x - L.x, z - L.z); if (d < L.r) y -= L.depth * (0.5 + 0.5 * Math.cos((d / L.r) * Math.PI)); }
       return y;
     };
-    this.terrainHeight = h;
+    this.terrainHeight = h; this.seaLevel = 0; // sea surface (for swimming)
 
     const geo = new THREE.PlaneGeometry(size, size, segs, segs); geo.rotateX(-Math.PI / 2);
     const pos = geo.attributes.position, colors = [];
-    const sand = new THREE.Color(0xe6d6a4), gDark = new THREE.Color(0x4f9a34), gLight = new THREE.Color(0x8ccb5e),
-      gDry = new THREE.Color(0xa8b257), dirt = new THREE.Color(0x7c5a36), rock = new THREE.Color(0x847d70), snow = new THREE.Color(0xeef3f6);
+    // alien anomaly palette: orange/amber grass, sandy beaches, rock cliffs, snow peaks
+    const sand = new THREE.Color(0xe6d6a4), gDark = new THREE.Color(0xb05e22), gLight = new THREE.Color(0xe2933a),
+      gDry = new THREE.Color(0xc98a3a), dirt = new THREE.Color(0x7a4a26), rock = new THREE.Color(0x847d70), snow = new THREE.Color(0xeef3f6);
     const c = new THREE.Color();
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), z = pos.getZ(i), y = h(x, z); pos.setY(i, y);
@@ -654,11 +655,10 @@ export class LevelBuilder {
     const land = new THREE.Mesh(geo, mat(0xffffff, { roughness: 1, flat: true }));
     land.material.vertexColors = true; land.receiveShadow = true; this.scene.add(land);
 
-    // sea — lively animated water that reflects the SKY ENVIRONMENT (cheap: no reflection render pass).
-    // Big faceted Gerstner waves + a turquoise→deep gradient; flatShading makes the moving facets glint.
-    const waterGeo = new THREE.PlaneGeometry(sea, sea, 64, 64); waterGeo.rotateX(-Math.PI / 2);
+    // sea — clear, smooth-shaded water with gentle rolling swell + sky-env reflection (cheap, no reflector).
+    const waterGeo = new THREE.PlaneGeometry(sea, sea, 80, 80); waterGeo.rotateX(-Math.PI / 2);
     const wpos = waterGeo.attributes.position, wcol = [], wc = new THREE.Color();
-    const shallow = new THREE.Color(0x4fcfe0), midSea = new THREE.Color(0x1f8fc4), deep = new THREE.Color(0x0c4f86);
+    const shallow = new THREE.Color(0x6fe0e8), midSea = new THREE.Color(0x2ba6cc), deep = new THREE.Color(0x10618f);
     for (let i = 0; i < wpos.count; i++) {
       const r = Math.hypot(wpos.getX(i), wpos.getZ(i)), tt = Math.min(1, Math.max(0, (r - R) / (R * 1.6)));
       wc.copy(tt < 0.5 ? shallow.clone().lerp(midSea, tt * 2) : midSea.clone().lerp(deep, (tt - 0.5) * 2));
@@ -666,7 +666,7 @@ export class LevelBuilder {
     }
     waterGeo.setAttribute("color", new THREE.Float32BufferAttribute(wcol, 3));
     const water = new THREE.Mesh(waterGeo, noOutline(new THREE.MeshStandardMaterial({
-      vertexColors: true, flatShading: true, metalness: 0.4, roughness: 0.22, envMapIntensity: 1.1, transparent: true, opacity: 0.9, // cel-friendly: bold glints, flat facets
+      vertexColors: true, flatShading: false, metalness: 0.35, roughness: 0.06, envMapIntensity: 1.25, transparent: true, opacity: 0.68, // clear + glossy + smooth
     })));
     water.position.y = 0; this.scene.add(water); this._sea = water; this._seaPos = wpos;
     const foam = new THREE.Mesh(new THREE.RingGeometry(R - 4, R + 6, 110),
@@ -703,8 +703,7 @@ export class LevelBuilder {
       const m = new THREE.Mesh(geo, mat(0xffffff, { roughness: 1, flat: true }));
       m.material.vertexColors = true; m.material.side = THREE.DoubleSide; this.scene.add(m); // double-sided so flanks are lit regardless of winding
     };
-    // a single faint, low, distant range — just a hint of far land so the island is ringed mostly by open sea
-    mountainRing(size * 1.3, 130, 58, 0xb2bcc8, true, 4.3);
+    void mountainRing; // island is ringed by OPEN WATER only — no distant range
     for (const L of lakes) { // wadeable shallow-lake surfaces (sit just below the original ground)
       const wy = h(L.x, L.z) + L.depth - 0.28;
       const disc = new THREE.Mesh(new THREE.CircleGeometry(L.r, 28),
@@ -716,13 +715,15 @@ export class LevelBuilder {
 
   update(t) {
     this._updateSpots(t);
-    if (this._seaPos) { // big rolling Gerstner waves; flatShading + env map make the moving facets glint
-      const p = this._seaPos;
+    if (this._seaPos) { // smooth rolling swell with analytic normals (cheap, no computeVertexNormals)
+      const p = this._seaPos, n = this._sea.geometry.attributes.normal;
       for (let i = 0; i < p.count; i++) {
         const x = p.getX(i), z = p.getZ(i);
-        p.setY(i, Math.sin(x * 0.03 + t * 1.4) * 1.0 + Math.cos(z * 0.026 + t * 1.05) * 1.0 + Math.sin((x + z) * 0.06 + t * 2.0) * 0.5);
+        p.setY(i, Math.sin(x * 0.02 + t * 1.0) * 0.8 + Math.cos(z * 0.017 + t * 0.8) * 0.8);
+        const dydx = Math.cos(x * 0.02 + t * 1.0) * 0.02 * 0.8, dydz = -Math.sin(z * 0.017 + t * 0.8) * 0.017 * 0.8;
+        const inv = 1 / Math.hypot(dydx, 1, dydz); n.setXYZ(i, -dydx * inv, inv, -dydz * inv);
       }
-      p.needsUpdate = true;
+      p.needsUpdate = true; n.needsUpdate = true;
     }
     for (const a of this.arcs) {
       if (a.taken) continue;

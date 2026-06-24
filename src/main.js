@@ -20,7 +20,7 @@ import { ParachuteIntro } from "./game/parachute-intro.js";
 import { DropPodIntro } from "./game/drop-pod-intro.js";
 import { preloadEnemies } from "./game/actors/enemy.js";
 import { preloadOperator, makeHero } from "./game/actors/operator.js";
-import { preloadCreatures, HERO_LIST, HERO_TINT, HERO_WEAPON } from "./game/actors/creature-assets.js";
+import { preloadCreatures, HERO_LIST, HERO_TINT, HERO_LOADOUT } from "./game/actors/creature-assets.js";
 import { preloadNature } from "./kit/content/nature.js";
 import { preloadVehicles } from "./kit/content/vehicles.js";
 import { preloadPickups } from "./kit/content/pickups.js";
@@ -58,6 +58,7 @@ class Game {
     this.weapon = new Weapon(this.camera, this.audio);
     this.vfx = new VFX(this.scene);
     this.vfx.setCamera(this.camera);
+    this.engine.onThunder = () => this.audio.thunder && this.audio.thunder();
 
     // player laser sight (a soft red aim beam); the game supplies its targets each frame
     this.laser = new LaserSight(this.scene, this.camera);
@@ -209,7 +210,7 @@ class Game {
     const sp = this.level.playerSpawn;
     const groundY = this.level.terrainHeight ? this.level.terrainHeight(sp.x, sp.z) : 0;
     this.intro = style === "droppod"
-      ? new DropPodIntro(this.scene, this.camera, sp, groundY, HERO_TINT[this.hero], this.vfx, this.audio, () => { this.hud._shake = Math.max(this.hud._shake || 0, 18); })
+      ? new DropPodIntro(this.scene, this.camera, sp, groundY, HERO_TINT[this.hero], this.vfx, this.audio, () => { this.hud._shake = Math.max(this.hud._shake || 0, 18); }, (text) => this.hud.showPrompt(text, 1.8))
       : style === "parachute"
         ? new ParachuteIntro(this.scene, this.camera, sp, groundY, this.hero)
         : new Intro(this.scene, this.camera, sp);
@@ -239,9 +240,12 @@ class Game {
     this.audio.resume();
     this.hud.hideOverlay();
     this.hud.setCombatVisible(true);
-    // equip the chosen hero's loadout weapon (Assault=rifle, Recon=laser, Heavy=launcher, Marksman=plasma)
-    if (this.hero && HERO_WEAPON[this.hero] && !this._loadoutGiven) {
-      this._loadoutGiven = true; this.weapon.give(HERO_WEAPON[this.hero]);
+    // equip the chosen hero's DISTINCT loadout (each hero carries a different weapon pair, cycled with Q)
+    if (this.hero && HERO_LOADOUT[this.hero] && !this._loadoutGiven) {
+      this._loadoutGiven = true;
+      this.weapon.owned = HERO_LOADOUT[this.hero].slice();
+      this.weapon.mode = this.weapon.owned[0];
+      this.weapon._showViewmodel();
       this.hud.setWeaponName(this._weaponName(this.weapon.mode));
     }
     this.objective.onPlayStart();
@@ -360,21 +364,26 @@ class Game {
     this._fovKick = Math.min(this._fovKick + 0.5, 3);
   }
 
-  // Arc Blade: a melee sword swing — hits every enemy in a short frontal arc.
+  // Arc Blade: a heavy melee swing — hits every enemy in a wide frontal arc, knocks them back, swoosh streak.
   _swingSword(t) {
     this.weapon.fireSword(t);
     const b = this.cfg.balance.sword;
     const dir = new THREE.Vector3(); this.camera.getWorldDirection(dir); dir.y = 0; dir.normalize();
-    const me = this.camera.position; let hit = false;
+    const me = this.camera.position; let hits = 0;
     for (const e of this.combat.enemies) {
       if (e.dead) continue;
-      const dx = e.pos.x - me.x, dz = e.pos.z - me.z, dist = Math.hypot(dx, dz);
+      const dx = e.pos.x - me.x, dz = e.pos.z - me.z, dist = Math.hypot(dx, dz) || 1;
       if (dist > b.reach) continue;
-      const dot = (dx / dist) * dir.x + (dz / dist) * dir.z; // within the frontal arc?
-      if (dot < 0.4) continue;
-      e.takeDamage(b.damage); this.vfx.hitPuff(e.hitbox.getWorldPosition(new THREE.Vector3())); hit = true;
+      if ((dx / dist) * dir.x + (dz / dist) * dir.z < 0.25) continue; // wide frontal arc
+      e.takeDamage(b.damage);
+      if (!e.boss) { e.pos.x += (dx / dist) * 1.6; e.pos.z += (dz / dist) * 1.6; } // knockback (not the boss)
+      this.vfx.hitPuff(e.hitbox.getWorldPosition(new THREE.Vector3())); hits++;
     }
-    if (hit) this.hud.bloom();
+    // swoosh streak across the front + a weighty FOV kick
+    const rt = new THREE.Vector3(dir.z, 0, -dir.x), c = me.clone().addScaledVector(dir, 2.4); c.y -= 0.3;
+    this.vfx.tracer(c.clone().addScaledVector(rt, 1.8), c.clone().addScaledVector(rt, -1.8));
+    this._fovKick = Math.min(this._fovKick + 1.0, 5);
+    if (hits) this.hud.bloom();
   }
 
   _enterCar(car) {
@@ -465,6 +474,7 @@ class Game {
     this.hud.update(dt);
     this.vfx.update(dt); // always fade effects (even while paused) so trails clear
     if (this.engine.cloudGroup) this.engine.cloudGroup.rotation.y += dt * 0.006; // clouds drift across the sky
+    this.engine.skyStorm && this.engine.skyStorm(dt); // purple-storm lightning
     this.level.update(t); // wave the objective flag
     this.laser.hide(); // re-shown each frame during play
     if (this.state === "intro") {
@@ -524,6 +534,10 @@ class Game {
       }
     } else {
       this.controller.update(dt, this.input);
+      // swim audio: splash on entering water, periodic strokes while swimming
+      if (this.controller.swimming && !this._wasSwimming) this.audio.splash && this.audio.splash();
+      if (this.controller.swimming && this.controller.moving) { this._swimT = (this._swimT || 0) + dt; if (this._swimT > 0.55) { this._swimT = 0; this.audio.swimStroke && this.audio.swimStroke(); } }
+      this._wasSwimming = this.controller.swimming;
       this.weapon.update(dt, this.controller.moving);
       this._updateLaser();
       // fire — mouse or touch FIRE button (per weapon mode)

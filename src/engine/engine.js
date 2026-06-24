@@ -107,7 +107,7 @@ export class Engine {
     const c = document.createElement("canvas"); c.width = W; c.height = H;
     const x = c.getContext("2d");
     const g = x.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, "#2f6fd0"); g.addColorStop(0.5, "#7fb0ea"); g.addColorStop(0.82, "#bfe0f4"); g.addColorStop(1, "#dfeede");
+    g.addColorStop(0, "#241046"); g.addColorStop(0.45, "#5a2a7e"); g.addColorStop(0.78, "#a8568f"); g.addColorStop(1, "#d39a86"); // purple anomaly storm sky
     x.fillStyle = g; x.fillRect(0, 0, W, H);
     // painterly cumulus clouds: each is a cluster of soft white puffs sitting on a flat shaded base
     const puff = (px, py, r, col, alpha) => {
@@ -157,17 +157,41 @@ export class Engine {
     }
   }
 
-  // bright sun-lit lighting for the daytime island
+  // purple-storm lighting for the anomaly island + a lightning bolt rig
   addDayLights(scene) {
-    scene.add(new THREE.HemisphereLight(0xbfe0ff, 0x5a7a44, 0.95));
-    scene.add(new THREE.AmbientLight(0xffffff, 0.22));
-    const sun = new THREE.DirectionalLight(0xfff2d6, 2.3);
+    this._hemi = new THREE.HemisphereLight(0xb98ce0, 0x3a2a52, 0.95); scene.add(this._hemi);
+    scene.add(new THREE.AmbientLight(0x6a4a8a, 0.26));
+    const sun = new THREE.DirectionalLight(0xe6ccff, 2.1);
     sun.position.copy(this.sunDir || new THREE.Vector3(0.5, 0.82, 0.32)).multiplyScalar(90);
     sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
     const s = sun.shadow.camera; s.near = 1; s.far = 220; s.left = -70; s.right = 70; s.top = 70; s.bottom = -70;
     sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.06;
     scene.add(sun, sun.target);
+    // lightning bolt (a jagged additive line, hidden until a strike); a persistent light we only intensity-pulse
+    const pts = []; for (let i = 0; i <= 10; i++) pts.push(new THREE.Vector3((Math.random() - 0.5) * 30, 380 - i * 34, (Math.random() - 0.5) * 30));
+    this._bolt = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xe9d6ff, transparent: true }));
+    this._bolt.visible = false; this._bolt.frustumCulled = false; scene.add(this._bolt);
+    this._boltT = 0; this._strikeIn = 3 + Math.random() * 4;
     return sun;
+  }
+
+  // drive the lightning storm each frame: periodic strikes flash the scene + show a bolt + cue thunder
+  skyStorm(dt) {
+    if (!this._bolt) return;
+    if (this._boltT > 0) {
+      this._boltT -= dt;
+      const f = Math.max(0, this._boltT / 0.18);
+      this.renderer.toneMappingExposure = 1.1 + f * 1.7;
+      if (this._hemi) this._hemi.intensity = 0.95 + f * 2.6;
+      this._bolt.material.opacity = f;
+      if (this._boltT <= 0) { this._bolt.visible = false; this.renderer.toneMappingExposure = 1.1; if (this._hemi) this._hemi.intensity = 0.95; }
+    } else if ((this._strikeIn -= dt) <= 0) {
+      this._strikeIn = 4 + Math.random() * 6; this._boltT = 0.18;
+      const bx = (Math.random() - 0.5) * 520, bz = (Math.random() - 0.5) * 520, pos = this._bolt.geometry.attributes.position;
+      for (let i = 0; i <= 10; i++) pos.setXYZ(i, bx + (Math.random() - 0.5) * 44, 400 - i * 36, bz + (Math.random() - 0.5) * 44);
+      pos.needsUpdate = true; this._bolt.visible = true;
+      this.onThunder && this.onThunder();
+    }
   }
 
   addLights(scene) {

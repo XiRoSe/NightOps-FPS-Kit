@@ -14,7 +14,7 @@ export const arcfall = {
 
   build(b) {
     b.spawnAt(0, 0);
-    b.setBounds({ minX: -205, maxX: 205, minZ: -205, maxZ: 205 });
+    b.setBounds({ minX: -320, maxX: 320, minZ: -320, maxZ: 320 }); // extends into the sea so you can swim around the island
     b.lake(-46, 20, 18, 1.5); b.lake(70, -64, 22, 1.6); b.lake(30, 90, 16, 1.4); // shallow wadeable lakes (carved first)
     b.islandTerrain({ size: 460 });   // hills → beach → sea → distant mountains
     b.scatterTrees(120, 20, 198);     // GLB forest (birch + palms), seated on the terrain (perf-tuned)

@@ -27,7 +27,7 @@ export const config = {
     rocket: { radius: 9, damage: 900, power: 16 },
     plasma: { radius: 8, damage: 520, power: 14, units: 8 },   // sci-fi plasma cannon: big blue blast
     laser: { damage: 26 },                                     // rapid laser rifle (hitscan, 200 shots)
-    sword: { damage: 80, reach: 4.0 },                         // melee arc blade (frontal swing)
+    sword: { damage: 110, reach: 4.6 },                        // heavy melee arc blade (wide swing + knockback)
     gunship: { hp: 15 },                                   // in units (rifle=1 -> 15 shots; one rocket=15)
     vehicle: { blastRadius: 11, blastDamage: 320, blastPower: 20 }, // a destroyed car's explosion (vs enemies)
     destructibles: { barrelHp: [2, 3], fuelTankHp: 4, vehicleHp: [7, 8] }, // HP in units

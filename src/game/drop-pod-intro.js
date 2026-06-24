@@ -5,8 +5,14 @@ import { makeHero } from "./actors/operator.js";
 // camera chasing it, a ground-impact shockwave, then the pod cracks open and the operator stands —
 // cut to first-person. Same interface as Intro ({ start(), update(dt), done, dispose() }).
 export class DropPodIntro {
-  constructor(scene, camera, spawn, groundY = 0, tint = null, vfx = null, audio = null, onImpact = null) {
-    this.scene = scene; this.camera = camera; this.vfx = vfx; this.audio = audio; this.onImpact = onImpact;
+  constructor(scene, camera, spawn, groundY = 0, tint = null, vfx = null, audio = null, onImpact = null, onStory = null) {
+    this.scene = scene; this.camera = camera; this.vfx = vfx; this.audio = audio; this.onImpact = onImpact; this.onStory = onStory;
+    this._story = [
+      { t: 0.3, text: "Reality is <b>fracturing</b>." },
+      { t: 1.2, text: "<b>THE VAULT</b> has stolen the 12 Arcs." },
+      { t: 2.2, text: "Recover them. <b>Seal the breach.</b>" },
+    ];
+    this._storyIdx = 0;
     this.spawn = new THREE.Vector3(spawn.x, groundY, spawn.z);
     this.t = 0; this.dur = 3.0; this.done = false; this.startY = 175; this.impacted = false; this.hold = 0;
     this.pos = new THREE.Vector3(spawn.x, this.startY, spawn.z);
@@ -34,6 +40,9 @@ export class DropPodIntro {
 
   update(dt) {
     this.t += dt;
+    while (this._storyIdx < this._story.length && this.t >= this._story[this._storyIdx].t) { // story crawl during the fall
+      this.onStory && this.onStory(this._story[this._storyIdx].text); this._storyIdx++;
+    }
     if (!this.impacted) {
       const k = Math.min(this.t / this.dur, 1), ease = k * k; // accelerate as it falls
       this.pos.y = this.startY + (this.spawn.y - this.startY) * ease;
