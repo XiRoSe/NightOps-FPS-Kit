@@ -194,7 +194,6 @@ class Game {
   // Mobile (a finger tapped Deploy -> touch active) starts directly; desktop uses pointer lock.
   _deploy() {
     this.audio.resume();
-    this.audio.stopLobbyMusic?.(); // fade out the select-screen groove
     if (this.touch.enabled) this._beginIntro();
     else this.controller.lock(); // onLock -> _beginIntro
   }
@@ -204,7 +203,6 @@ class Game {
     if (this.state === "intro" || this._introDone) return;
     if (!this.cfg.intro.enabled) { this._introDone = true; this._startPlay(); return; }
     this.state = "intro";
-    this.audio.stopLobbyMusic?.();
     this._disposeLobby();
     this.hud.hideOverlay();
     this.hud.setCombatVisible(false);

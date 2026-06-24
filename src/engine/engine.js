@@ -196,7 +196,7 @@ export class Engine {
     const pts = []; for (let i = 0; i <= 10; i++) pts.push(new THREE.Vector3((Math.random() - 0.5) * 30, 380 - i * 34, (Math.random() - 0.5) * 30));
     this._bolt = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xe9d6ff, transparent: true }));
     this._bolt.visible = false; this._bolt.frustumCulled = false; scene.add(this._bolt);
-    this._boltT = 0; this._strikeIn = 3 + Math.random() * 4;
+    this._boltT = 0; this._strikeIn = 5 + Math.random() * 40; // first strike in 5–45s
     // shooting stars: a pool of bright streaks that arc across the sky
     this._meteors = [];
     for (let i = 0; i < 5; i++) {
@@ -246,7 +246,7 @@ export class Engine {
       this._bolt.material.opacity = Math.min(1, f * 1.6);
       if (this._boltT <= 0) { this._bolt.visible = false; this.renderer.toneMappingExposure = 1.1; if (this._hemi) this._hemi.intensity = 0.95; if (this._sun) this._sun.intensity = 2.1; }
     } else if ((this._strikeIn -= dt) <= 0) {
-      this._strikeIn = 1.6 + Math.random() * 3.2; this._boltT = 0.26; // strike far more often
+      this._strikeIn = 5 + Math.random() * 40; this._boltT = 0.26; // next strike in 5–45s
       const bx = (Math.random() - 0.5) * 540, bz = (Math.random() - 0.5) * 540, pos = this._bolt.geometry.attributes.position;
       let px = bx; for (let i = 0; i <= 10; i++) { px += (Math.random() - 0.5) * 30; pos.setXYZ(i, px, 410 - i * 38, bz + (Math.random() - 0.5) * 40); } // jagged forked bolt
       pos.needsUpdate = true; this._bolt.visible = true;

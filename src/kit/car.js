@@ -10,7 +10,8 @@ export class Car {
     this.pos = new THREE.Vector3(x, 0, z);
     this.yaw = Math.random() * Math.PI * 2; this.speed = 0;
     this.r = 3.2;                 // enter/interact radius
-    this.rideH = 0.75;            // lift so the wheels sit ON the ground (model origin is centred)
+    const bb = new THREE.Box3().setFromObject(this.group); // lift so the LOWEST point (wheels) rests on the ground
+    this.rideH = isFinite(bb.min.y) ? -bb.min.y : 0;
     this.maxSpeed = 40; this.maxRev = 11;   // fast sports car
     this._tmp = new THREE.Vector3(); this._look = new THREE.Vector3();
     this.scene.add(this.group);

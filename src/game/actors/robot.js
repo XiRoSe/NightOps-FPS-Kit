@@ -45,7 +45,7 @@ export class Robot {
     this.hitbox.position.y = cfg.hbH / 2; this.hitbox.userData.enemy = this; this.group.add(this.hitbox);
     this.boss = !!spawn.boss;
     this._bossCd = 4 + Math.random() * 2; this._charging = false; this._charge = 0; // chest-laser cycle
-    this._chestY = (cfg.hbH * 0.7) * (spawn.scale || 1);
+    this._chestY = 5.5 * (spawn.scale || 1); // high up on the chest of the giant
     if (spawn.scale) { this.model && this.model.scale.multiplyScalar(spawn.scale); this.hitbox.scale.setScalar(spawn.scale); this.hitbox.position.y = cfg.hbH / 2 * spawn.scale; this.cfg = { ...cfg, boom: cfg.boom * spawn.scale }; }
   }
 
@@ -57,9 +57,13 @@ export class Robot {
       ctx.vfx && ctx.vfx._flash && ctx.vfx._flash(chest, 0.6 + this._charge * 2.2, 0xff7a2a); // growing charge orb
       if (this._charge >= 1.3) {
         this._charging = false; this._bossCd = 5 + Math.random() * 2.5;
-        const from = chest.clone(), to = new THREE.Vector3(playerPos.x, playerPos.y, playerPos.z);
-        ctx.vfx && ctx.vfx.bossBeam && ctx.vfx.bossBeam(from, to);
-        for (let i = 1; i <= 5; i++) ctx.vfx && ctx.vfx.explosion && ctx.vfx.explosion(from.clone().lerp(to, i / 5), 1.8); // booms along the beam
+        // aim at the GROUND beneath the player so the beam is a visible downward diagonal ray (not head-on)
+        const groundY = this.level.terrainHeight ? this.level.terrainHeight(playerPos.x, playerPos.z) : playerPos.y - 1.6;
+        const from = chest.clone(), to = new THREE.Vector3(playerPos.x, groundY + 0.2, playerPos.z);
+        const beamEnd = to.clone().add(to.clone().sub(from).normalize().multiplyScalar(8)); // overshoot past the impact
+        ctx.vfx && ctx.vfx.bossBeam && ctx.vfx.bossBeam(from, beamEnd);
+        for (let i = 1; i <= 6; i++) ctx.vfx && ctx.vfx.explosion && ctx.vfx.explosion(from.clone().lerp(to, i / 6), 1.6 + i * 0.25); // bigger booms toward the impact
+        ctx.vfx && ctx.vfx._shockwave && ctx.vfx._shockwave(to);
         ctx.audio && ctx.audio.explosion && ctx.audio.explosion(); ctx.audio && ctx.audio.plasma && ctx.audio.plasma();
         ctx.onBossBeam && ctx.onBossBeam();
         ctx.onPlayerHit && ctx.onPlayerHit(34 + Math.floor(Math.random() * 22));
