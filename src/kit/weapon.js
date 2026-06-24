@@ -10,7 +10,7 @@ export class Weapon {
     this.audio = audio;
     this.magSize = 30;
     this.ammo = 30;
-    this.reserve = 150;
+    this.reserve = 90;
     this.fireRate = 0.092; // ~650 rpm
     this.reloadTime = 1.5;
     this.damage = 34;
@@ -39,8 +39,8 @@ export class Weapon {
     // weapons cycled with Q — sword (melee) always owned; plasma/laser unlocked via island pickups
     this.owned = ["rifle", "sword", "launcher"]; // mode order for cycling
     this.plasmaRate = 0.5; this._lastPlasma = -10; this.plasmaAmmo = 24;
-    this.laserRate = 0.11; this._lastLaser = -10; this.laserAmmo = 200; // rapid laser rifle
-    this.shotgunRate = 0.8; this._lastShotgun = -10; this.shotgunAmmo = 24; // spread shotgun
+    this.laserRate = 0.11; this._lastLaser = -10; this.laserAmmo = 90; // rapid laser rifle
+    this.shotgunRate = 0.8; this._lastShotgun = -10; this.shotgunAmmo = 18; // spread shotgun
     this.swordRate = 0.5; this._lastSword = -10;
     this.energy = new THREE.Group(); this.energy.visible = false;
     this.energy.position.set(0.32, -0.34, -0.4); this.energy.rotation.set(0, Math.PI, 0);
@@ -55,11 +55,11 @@ export class Weapon {
     camera.add(this.shotgunGun);
     // generic hitscan guns (one shared viewmodel slot; model swapped per mode)
     this.guns = {
-      smg:     { model: "smg",     rate: 0.075, ammo: 240, dmg: 16,  pellets: 1, spread: 0.03, sound: "shoot",   beam: 0xfff0bf, kick: 0.05 },
-      minigun: { model: "minigun", rate: 0.05,  ammo: 400, dmg: 12,  pellets: 1, spread: 0.06, sound: "shoot",   beam: 0xfff0bf, kick: 0.04 },
-      burst:   { model: "smg",     rate: 0.32,  ammo: 150, dmg: 22,  pellets: 3, spread: 0.02, sound: "shoot",   beam: 0xfff0bf, kick: 0.1 },
-      railgun: { model: "railgun", rate: 1.1,   ammo: 24,  dmg: 240, pellets: 1, spread: 0,    sound: "laser",   beam: 0x9fe8ff, kick: 0.16, pierce: true },
-      flak:    { model: "minigun", rate: 0.45,  ammo: 70,  dmg: 18,  pellets: 6, spread: 0.16, sound: "shotgun", beam: 0xffcaa0, kick: 0.16 },
+      smg:     { model: "smg",     rate: 0.075, ammo: 96,  dmg: 16,  pellets: 1, spread: 0.03, sound: "shoot",   beam: 0xfff0bf, kick: 0.05 },
+      minigun: { model: "minigun", rate: 0.05,  ammo: 150, dmg: 12,  pellets: 1, spread: 0.06, sound: "shoot",   beam: 0xfff0bf, kick: 0.04 },
+      burst:   { model: "smg",     rate: 0.32,  ammo: 72,  dmg: 22,  pellets: 3, spread: 0.02, sound: "shoot",   beam: 0xfff0bf, kick: 0.1 },
+      railgun: { model: "railgun", rate: 1.1,   ammo: 14,  dmg: 240, pellets: 1, spread: 0,    sound: "laser",   beam: 0x9fe8ff, kick: 0.16, pierce: true },
+      flak:    { model: "minigun", rate: 0.45,  ammo: 36,  dmg: 18,  pellets: 6, spread: 0.16, sound: "shotgun", beam: 0xffcaa0, kick: 0.16 },
     };
     this.gunAmmo = {}; this._gunLast = {}; for (const k in this.guns) { this.gunAmmo[k] = this.guns[k].ammo; this._gunLast[k] = -10; }
     this.extraGun = new THREE.Group(); this.extraGun.visible = false;

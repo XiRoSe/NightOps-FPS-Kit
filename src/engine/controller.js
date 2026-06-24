@@ -121,7 +121,7 @@ export class Controller {
 
     let speed = input.isDown("shift") && !this.crouching ? this.sprintSpeed : this.walkSpeed;
     if (this.crouching) speed *= 0.5;
-    if (this.swimming) speed *= 0.55; // slower in the water
+    if (this.swimming) speed *= 1.15; // 15% faster through the water
 
     if (this.moving) {
       dir.normalize().multiplyScalar(speed * dt);

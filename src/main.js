@@ -694,9 +694,22 @@ class Game {
           else if (gf.kind === "plasma" || gf.kind === "laser" || gf.kind === "shotgun") {
             this.weapon.give(gf.kind); this.hud.setWeaponName(this._weaponName(gf.kind));
             this.hud.notify(`✦ ${this._weaponName(gf.kind)} ACQUIRED — Q to cycle`);
-          } else { this.weapon.addAmmo(1.5); this.hud.notify("✦ AMMO CACHE — ALL WEAPONS REPLENISHED"); }
+          } else { // ammo cache — resupply, then it respawns nearby after 10s
+            this.weapon.addAmmo(1.5); this.hud.notify("✦ AMMO CACHE — ALL WEAPONS REPLENISHED");
+            (this._ammoRespawns || (this._ammoRespawns = [])).push({ gf, ox: gf.x, oz: gf.z, at: t + 10 });
+          }
         }
       }
+    }
+    // respawn collected ammo caches at a random spot within 15m, 10s later
+    if (this._ammoRespawns) for (let i = this._ammoRespawns.length - 1; i >= 0; i--) {
+      const rs = this._ammoRespawns[i]; if (t < rs.at) continue;
+      this._ammoRespawns.splice(i, 1);
+      const a = Math.random() * Math.PI * 2, r = 4 + Math.random() * 11; // 4–15m away
+      const b = this.level.bounds, gf = rs.gf;
+      const nx = Math.max(b.minX, Math.min(b.maxX, rs.ox + Math.cos(a) * r)), nz = Math.max(b.minZ, Math.min(b.maxZ, rs.oz + Math.sin(a) * r));
+      gf.x = nx; gf.z = nz; gf.group.position.set(nx, this.level.terrainHeight ? this.level.terrainHeight(nx, nz) : 0, nz);
+      gf.taken = false; gf.group.visible = true;
     }
 
     // health regen: restore a little HP on a fixed interval

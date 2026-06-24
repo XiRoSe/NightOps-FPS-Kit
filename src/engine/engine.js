@@ -126,13 +126,13 @@ export class Engine {
     };
     for (let i = 0; i < 8; i++) {
       const cx = Math.random() * W, cy = H * 0.18 + Math.random() * H * 0.22, s = 0.8 + Math.random() * 0.9, n = 5 + Math.floor(Math.random() * 4), base = cy + 26 * s;
-      for (let j = 0; j < n; j++) { // shaded grey underbellies first
+      for (let j = 0; j < n; j++) { // warm shaded underbellies first
         const px = cx + (j - n / 2) * 52 * s, r = (40 + Math.random() * 34) * s;
-        puff(px, base, r, "200,210,222", 0.5);
+        puff(px, base, r, "176,98,50", 0.55);
       }
-      for (let j = 0; j < n; j++) { // bright tops stacked above
+      for (let j = 0; j < n; j++) { // glowing darker-orange tops stacked above
         const px = cx + (j - n / 2) * 50 * s + (Math.random() - 0.5) * 20, py = cy + (Math.random() - 0.6) * 26 * s, r = (44 + Math.random() * 40) * s;
-        puff(px, py, r, "255,255,255", 0.92);
+        puff(px, py, r, "232,150,80", 0.92);
       }
     }
     const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
@@ -141,14 +141,7 @@ export class Engine {
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     scene.environment = pmrem.fromEquirectangular(tex).texture;
     scene.environmentIntensity = 1.0;
-    this.sunDir = new THREE.Vector3(0.5, 0.82, 0.32).normalize();
-    const mc = document.createElement("canvas"); mc.width = mc.height = 256; const m = mc.getContext("2d");
-    const halo = m.createRadialGradient(128, 128, 8, 128, 128, 128);
-    halo.addColorStop(0, "rgba(255,251,232,1)"); halo.addColorStop(0.28, "rgba(255,245,205,0.55)"); halo.addColorStop(1, "rgba(255,245,205,0)");
-    m.fillStyle = halo; m.fillRect(0, 0, 256, 256);
-    const st = new THREE.CanvasTexture(mc); st.colorSpace = THREE.SRGBColorSpace;
-    const sun = new THREE.Sprite(new THREE.SpriteMaterial({ map: st, transparent: true, depthWrite: false, fog: false }));
-    sun.position.copy(this.sunDir).multiplyScalar(500); sun.scale.setScalar(170); scene.add(sun);
+    this.sunDir = new THREE.Vector3(0.5, 0.82, 0.32).normalize(); // light direction only — no sun/moon disc in the storm sky
 
     // XIII-style cloud billboards: bold flat cumulus (shaded grey underbelly + crisp white body), each
     // drawn fully INSIDE its canvas (margin → no hard edges). Several distinct shapes so they never repeat.
@@ -156,8 +149,8 @@ export class Engine {
       const cc = document.createElement("canvas"); cc.width = cc.height = 256; const x = cc.getContext("2d");
       const n = 4 + Math.floor(Math.random() * 3), lobes = [];
       for (let i = 0; i < n; i++) lobes.push({ x: 128 + (i - (n - 1) / 2) * 30 + (Math.random() - 0.5) * 14, y: 148 - Math.pow(Math.abs(i - (n - 1) / 2), 1.3) * 10 + (Math.random() - 0.5) * 12, r: 34 + Math.random() * 22 });
-      for (const L of lobes) { const g = x.createRadialGradient(L.x, L.y + L.r * 0.45, 2, L.x, L.y + L.r * 0.45, L.r * 1.05); g.addColorStop(0, "rgba(170,180,202,0.9)"); g.addColorStop(0.8, "rgba(170,180,202,0.45)"); g.addColorStop(1, "rgba(170,180,202,0)"); x.fillStyle = g; x.beginPath(); x.arc(L.x, L.y + L.r * 0.35, L.r, 0, 7); x.fill(); } // shaded underbelly
-      for (const L of lobes) { const g = x.createRadialGradient(L.x, L.y - L.r * 0.25, 2, L.x, L.y, L.r); g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.82, "rgba(255,255,255,0.97)"); g.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = g; x.beginPath(); x.arc(L.x, L.y, L.r, 0, 7); x.fill(); } // bold white body
+      for (const L of lobes) { const g = x.createRadialGradient(L.x, L.y + L.r * 0.45, 2, L.x, L.y + L.r * 0.45, L.r * 1.05); g.addColorStop(0, "rgba(170,94,48,0.92)"); g.addColorStop(0.8, "rgba(170,94,48,0.45)"); g.addColorStop(1, "rgba(170,94,48,0)"); x.fillStyle = g; x.beginPath(); x.arc(L.x, L.y + L.r * 0.35, L.r, 0, 7); x.fill(); } // darker warm underbelly
+      for (const L of lobes) { const g = x.createRadialGradient(L.x, L.y - L.r * 0.25, 2, L.x, L.y, L.r); g.addColorStop(0, "rgba(236,156,86,1)"); g.addColorStop(0.82, "rgba(232,150,80,0.97)"); g.addColorStop(1, "rgba(232,150,80,0)"); x.fillStyle = g; x.beginPath(); x.arc(L.x, L.y, L.r, 0, 7); x.fill(); } // darker-orange body
       const t = new THREE.CanvasTexture(cc); t.colorSpace = THREE.SRGBColorSpace; return t;
     };
     const cloudTexes = [makeCloud(), makeCloud(), makeCloud(), makeCloud(), makeCloud()];
@@ -194,7 +187,7 @@ export class Engine {
     scene.add(sun, sun.target);
     // lightning bolt (a jagged additive line, hidden until a strike); a persistent light we only intensity-pulse
     const pts = []; for (let i = 0; i <= 10; i++) pts.push(new THREE.Vector3((Math.random() - 0.5) * 30, 380 - i * 34, (Math.random() - 0.5) * 30));
-    this._bolt = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xe9d6ff, transparent: true }));
+    this._bolt = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x9fd0ff, transparent: true })); // light-blue lightning
     this._bolt.visible = false; this._bolt.frustumCulled = false; scene.add(this._bolt);
     this._boltT = 0; this._strikeIn = 5 + Math.random() * 20; // first strike in 5–25s
     // shooting stars: a pool of bright streaks that arc across the sky
