@@ -769,7 +769,7 @@ export class LevelBuilder {
     // sea — clear, smooth-shaded water with gentle rolling swell + sky-env reflection (cheap, no reflector).
     const waterGeo = new THREE.PlaneGeometry(sea, sea, 120, 120); waterGeo.rotateX(-Math.PI / 2);
     const wpos = waterGeo.attributes.position, wcol = [], wc = new THREE.Color();
-    const shallow = new THREE.Color(0x6fe0e8), midSea = new THREE.Color(0x2ba6cc), deep = new THREE.Color(0x10618f);
+    const shallow = new THREE.Color(0x49b6c6), midSea = new THREE.Color(0x2ba6cc), deep = new THREE.Color(0x10618f); // muted shallow (no harsh light-blue ring)
     for (let i = 0; i < wpos.count; i++) {
       // spread the shallow→deep gradient over a LARGE distance so it stays smooth across the wide sea (no hard ring/seam when viewed from high up)
       const r = Math.hypot(wpos.getX(i), wpos.getZ(i)), tt = Math.min(1, Math.max(0, (r - R) / 1600));
@@ -782,9 +782,9 @@ export class LevelBuilder {
     })));
     water.position.y = 0; this.scene.add(water); this._sea = water; this._seaPos = wpos;
     this._seaBase = Float32Array.from(wcol); this._seaColAttr = waterGeo.attributes.color; // base tint, for bold white XIII wave crests
-    const foam = new THREE.Mesh(new THREE.RingGeometry(R - 4, R + 6, 110),
-      noOutline(new THREE.MeshBasicMaterial({ color: 0xf2fbff, transparent: true, opacity: 0.5, side: THREE.DoubleSide })));
-    foam.rotation.x = -Math.PI / 2; foam.position.y = 0.3; this.scene.add(foam);
+    const foam = new THREE.Mesh(new THREE.RingGeometry(R - 3, R + 3, 110),
+      noOutline(new THREE.MeshBasicMaterial({ color: 0xeaf6ff, transparent: true, opacity: 0.22, side: THREE.DoubleSide })));
+    foam.rotation.x = -Math.PI / 2; foam.position.y = 0.18; this.scene.add(foam);
 
     // distant mountain range: dense OVERLAPPING craggy peaks (leaning apexes) that merge into a continuous
     // silhouette — near rocky band + far big hazy snow band for depth.
