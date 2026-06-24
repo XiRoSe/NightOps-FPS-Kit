@@ -279,10 +279,10 @@ export class HUD {
         if ((sx - cx) ** 2 + (sy - cy) ** 2 > rad * rad) continue;
         const h = terrain(px + (sx - cx) / sc, pz + (sy - cy) / sc);
         let col;
-        if (h < sea) col = "#22617e";                                   // water
-        else if (h < 1.2) col = "#8f8052";                              // beach
-        else if (h > 16) col = "#6b6660";                               // mountain
-        else { const tt = Math.min(1, (h - 1.2) / 14); col = `rgb(${56 + (tt * 26) | 0},${128 - (tt * 46) | 0},${52 + (tt * 8) | 0})`; } // grass (darker higher)
+        if (h < sea) col = "#2a93b4";                                   // turquoise sea (matches the water)
+        else if (h < 1.2) col = "#e6d6a4";                              // sandy beach
+        else if (h > 16) col = "#847d70";                               // rocky mountain
+        else { const tt = Math.min(1, (h - 1.2) / 14); col = `rgb(${198 - (tt * 55) | 0},${110 - (tt * 2) | 0},${42 - (tt * 20) | 0})`; } // orange grass → dark-yellow higher (matches the island)
         x.fillStyle = col; x.fillRect(sx - cell / 2 - 0.5, sy - cell / 2 - 0.5, cell + 1, cell + 1);
       }
     }
