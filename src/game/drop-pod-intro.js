@@ -92,8 +92,11 @@ export class DropPodIntro {
       if (this.vfx._fireball) for (let i = 0; i < 8; i++) this.vfx._fireball(this._tmp.set(this.spawn.x + (Math.random() - 0.5) * 8, this.spawn.y + 1 + Math.random() * 2, this.spawn.z + (Math.random() - 0.5) * 8), 1.0 + Math.random());
       if (this.vfx._spawnDebris) this.vfx._spawnDebris(this._tmp.set(this.spawn.x, this.spawn.y + 0.4, this.spawn.z), 16);
       if (this.vfx._shockwave) { this.vfx._shockwave(this._tmp.set(this.spawn.x, this.spawn.y + 0.3, this.spawn.z)); setTimeout(() => this.vfx._shockwave(this._tmp.set(this.spawn.x, this.spawn.y + 0.3, this.spawn.z)), 120); }
+      // bold XIII-style water/sand SPLASH — a fan of white-cyan plumes
+      if (this.vfx._flash) for (let i = 0; i < 16; i++) this.vfx._flash(this._tmp.set(this.spawn.x + (Math.random() - 0.5) * 11, this.spawn.y + 0.8 + Math.random() * 3.5, this.spawn.z + (Math.random() - 0.5) * 11), 1.3 + Math.random() * 1.8, i % 2 ? 0xe6f7ff : 0x8fd6ec);
     }
-    if (this.audio && this.audio.explosion) { this.audio.explosion(); setTimeout(() => this.audio.explosion(), 90); setTimeout(() => this.audio.explosion(), 220); }
+    if (this.audio && this.audio.explosion) { this.audio.explosion(); setTimeout(() => this.audio.explosion(), 90); }
+    if (this.audio && this.audio.splash) this.audio.splash();
     this.onImpact && this.onImpact();
     this.pod.position.y = -0.7; // pod buries its nose
     if (this.hero) this.hero.visible = true; // operator emerges

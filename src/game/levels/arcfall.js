@@ -13,7 +13,7 @@ export const arcfall = {
   },
 
   build(b) {
-    b.spawnAt(0, 0);
+    b.spawnAt(0, 204);   // land on the south BEACH near the water (drop pod crashes at the shoreline)
     b.setBounds({ minX: -320, maxX: 320, minZ: -320, maxZ: 320 }); // extends into the sea so you can swim around the island
     b.lake(-46, 20, 18, 1.5); b.lake(70, -64, 22, 1.6); b.lake(30, 90, 16, 1.4); // shallow wadeable lakes (carved first)
     b.lake(-78, 50, 20, 1.7); // the Saurian Brood's forest pond (NW)

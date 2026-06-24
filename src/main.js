@@ -475,11 +475,14 @@ class Game {
     this.hud.notify("DRIVING — press E to exit");
   }
   _exitCar() {
-    const s = this.driving.exitSpot();
+    const car = this.driving;
+    const s = car.exitSpot();
     this.camera.position.set(s.x, s.y + this.controller.eye, s.z);
     this.controller.feetY = s.y; this.controller.vy = 0; this.controller.onGround = true;
     this.driving = null;
     this.audio.stopEngine?.();
+    // the player just hopped out — they didn't brake, so the car keeps rolling and coasts to a stop
+    if (Math.abs(car.speed) > 1.5) { (this._coastCars || (this._coastCars = [])).push(car); }
     if (this.weapon._showViewmodel) this.weapon._showViewmodel(); else this.weapon.group.visible = true;
     this.hud.notify("ON FOOT");
   }
@@ -603,6 +606,15 @@ class Game {
       }
     }
 
+    // driverless cars coast to a natural stop (player hopped out without braking)
+    if (this._coastCars && this._coastCars.length) {
+      this._noInput = this._noInput || { isDown: () => false, touch: {} };
+      for (let i = this._coastCars.length - 1; i >= 0; i--) {
+        const car = this._coastCars[i];
+        car.update(dt, this._noInput);
+        if (Math.abs(car.speed) < 0.4) this._coastCars.splice(i, 1); // rolled to a stop
+      }
+    }
     if (this.driving) {
       this.driving.update(dt, this.input);
       this.driving.chaseCamera(this.camera, dt);
@@ -645,6 +657,11 @@ class Game {
 
     const pp = this.driving ? this.driving.pos : this.camera.position; // "player position" for combat/pickups
     this.combat.update(dt, t, pp);
+    // minimap: player (facing arrow), enemies (red), arcs (gold)
+    if (this.hud.drawMinimap) {
+      const fwd = this._fwdTmp || (this._fwdTmp = new THREE.Vector3()); this.camera.getWorldDirection(fwd);
+      this.hud.drawMinimap({ px: pp.x, pz: pp.z, yaw: Math.atan2(fwd.x, -fwd.z), R: 245, enemies: this.combat.enemies, arcs: this.level.arcs || [] });
+    }
     this._updateProjectiles(dt);
     this.level.updateDynamics(dt); // explosion-flung props (barrels, etc.)
 

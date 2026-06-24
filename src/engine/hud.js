@@ -26,8 +26,10 @@ const CSS = `
 .panel{ position:absolute; background:var(--panel); border:1px solid var(--line);
   padding:8px 14px; backdrop-filter:blur(2px); }
 .panel .lbl{ font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.18em; }
-#mission{ left:18px; top:16px; }
+#mission{ left:18px; top:16px; padding:8px; }
 #mission .op{ font-size:15px; }
+#minimap{ display:block; width:150px; height:150px; border-radius:6px; }
+#mission .maptitle{ font-size:11px; color:var(--dim); letter-spacing:.18em; text-align:center; margin-top:5px; }
 #hostiles{ right:18px; top:16px; text-align:right; }
 #hostiles b{ font-size:26px; font-weight:700; color:var(--hz); line-height:1; }
 #objective{ left:50%; top:18px; transform:translateX(-50%); text-align:center; }
@@ -102,7 +104,7 @@ export class HUD {
       <div id="xhair"><span class="tick t-u"></span><span class="tick t-d"></span>
         <span class="tick t-l"></span><span class="tick t-r"></span><span class="dot"></span></div>
       <div id="hitmark"><span></span><span></span><span></span><span></span></div>
-      <div id="mission" class="panel"><div class="lbl">Operation</div><div class="op mil-title">Clear the Compound</div></div>
+      <div id="mission" class="panel"><canvas id="minimap" width="150" height="150"></canvas><div class="maptitle op">ARCFALL</div></div>
       <div id="hostiles" class="panel"><div class="lbl">Hostiles</div><b>0</b></div>
       <div id="objective" class="panel"><div class="lbl">Objective</div><div class="obj mil-title">Eliminate hostiles · reach <span class="arrow">EXTRACTION ▲</span></div></div>
       <div id="timer" class="panel hidden"><div class="lbl">Detonation</div><div class="t">3:00</div></div>
@@ -260,6 +262,21 @@ export class HUD {
   setCounter(label, value) { this.root.querySelector("#hostiles .lbl").textContent = label; this.hostiles.textContent = value; }
   setObjective(html) { const o = this.root.querySelector("#objective .obj"); if (o) o.innerHTML = html; }
   setOperation(name) { const o = this.root.querySelector("#mission .op"); if (o) o.textContent = name; }
+  // top-left minimap: island + the player (facing arrow), live enemy dots (red) and Arc dots (gold)
+  drawMinimap({ px, pz, yaw, R = 240, enemies = [], arcs = [] }) {
+    const cv = this._mini || (this._mini = this.root.querySelector("#minimap")); if (!cv) return;
+    const x = this._miniCtx || (this._miniCtx = cv.getContext("2d")), W = cv.width, H = cv.height, cx = W / 2, cy = H / 2;
+    const toX = (wx) => cx + (wx / R) * (W / 2 - 6), toY = (wz) => cy + (wz / R) * (H / 2 - 6);
+    x.clearRect(0, 0, W, H);
+    x.fillStyle = "rgba(20,12,32,0.55)"; x.fillRect(0, 0, W, H);
+    x.fillStyle = "rgba(90,70,120,0.35)"; x.beginPath(); x.arc(cx, cy, W * 0.46, 0, 7); x.fill(); // island disc
+    for (const a of arcs) if (!a.taken) { x.fillStyle = "#ffd23a"; x.beginPath(); x.arc(toX(a.x), toY(a.z), 2.4, 0, 7); x.fill(); }
+    for (const e of enemies) if (!e.dead) { x.fillStyle = e.boss ? "#ff8a2a" : "#ff3b30"; x.beginPath(); x.arc(toX(e.pos.x), toY(e.pos.z), e.boss ? 4 : 2.6, 0, 7); x.fill(); }
+    // player arrow (rotated by facing yaw)
+    const PX = toX(px), PY = toY(pz);
+    x.save(); x.translate(PX, PY); x.rotate(yaw); x.fillStyle = "#ffffff";
+    x.beginPath(); x.moveTo(0, -6); x.lineTo(4, 5); x.lineTo(0, 2); x.lineTo(-4, 5); x.closePath(); x.fill(); x.restore();
+  }
 
   // ---- bomb objective ----
   showTimer(v) { this.root.querySelector("#timer").classList.toggle("hidden", !v); }
