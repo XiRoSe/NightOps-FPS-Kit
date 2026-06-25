@@ -454,7 +454,7 @@ export class LevelBuilder {
 
   // a loot gift crate (kind = "ammo" | "grenade" | "health"); collected on proximity by the runner.
   giftCrate(x, z, kind = "ammo") {
-    const C = { ammo: 0xffce73, grenade: 0xd0552e, health: 0x4fd06a, armor: 0x3a9cff, plasma: 0x4fb4ff, laser: 0xff5a3c, shotgun: 0xff8a3a }[kind] || 0xffce73;
+    const C = { ammo: 0xffce73, grenade: 0xd0552e, health: 0x4fd06a, armor: 0x3a9cff, plasma: 0x4fb4ff, laser: 0xff5a3c, shotgun: 0xff8a3a, smg: 0xffd166, minigun: 0xc7903a, railgun: 0x46ff5a, rifle: 0xffe08a, burst: 0xff9e5a, flak: 0xd07a3a, launcher: 0xe06030 }[kind] || 0xffce73;
     const g = new THREE.Group(); g.position.set(x, this._groundY(x, z), z);
     // a low dark plinth + glow halo, with a distinct floating ICON per pickup kind
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 0.22, 10), mat(0x2c2f36, { roughness: 0.7 })); base.position.y = 0.11; base.castShadow = true;
@@ -468,8 +468,9 @@ export class LevelBuilder {
   // a relevant low-poly icon for each pickup kind (ammo box, med kit, grenades, or the real weapon model)
   _pickupIcon(kind, C) {
     const grp = new THREE.Group();
-    if (kind === "plasma" || kind === "laser" || kind === "shotgun") {
-      const m = makeFpWeapon(kind); if (m) { m.scale.multiplyScalar(1.15); m.rotation.set(0, 0, Math.PI * 0.12); grp.add(m); return grp; }
+    const ICON = { rifle: "smg", burst: "smg", flak: "minigun", launcher: "minigun" }[kind] || kind; // guns without their own GLB borrow a similar one
+    if (["plasma", "laser", "shotgun", "smg", "minigun", "railgun"].includes(ICON)) {
+      const m = makeFpWeapon(ICON); if (m) { m.scale.multiplyScalar(1.15); m.rotation.set(0, 0, Math.PI * 0.12); grp.add(m); return grp; }
     }
     if (kind === "health") {
       const m = makeFpWeapon("medkit"); if (m) { m.scale.multiplyScalar(1.1); grp.add(m); return grp; } // real first-aid kit

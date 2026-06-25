@@ -28,7 +28,7 @@ export function makeOperator() {
 // a distinct hero per loadout id (Assault=Swat, Recon=Adventurer, Heavy=Spacesuit, Marksman=Suit).
 // The modular-men models import in a T-pose, so we drop the arms into a natural standing stance.
 export function makeHero(heroId) {
-  const asset = HERO_MODELS[heroId] || OPERATOR;
+  const asset = HERO_MODELS[heroId] || OPERATOR; // distinct look per loadout (gameplay is identical — all start with the staff)
   const inst = asset.make(OPERATOR_BONES);
   if (!inst) return null;
   inst.model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });

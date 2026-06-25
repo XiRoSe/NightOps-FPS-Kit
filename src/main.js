@@ -256,13 +256,13 @@ class Game {
     this.audio.resume();
     this.hud.hideOverlay();
     this.hud.setCombatVisible(true);
-    // every hero carries ALL weapons (cycle with Q), but STARTS equipped with their own signature weapon
-    if (this.hero && HERO_LOADOUT[this.hero] && !this._loadoutGiven) {
+    // everyone starts with ONLY the melee staff — find the guns scattered across the island
+    if (!this._loadoutGiven) {
       this._loadoutGiven = true;
-      this.weapon.owned = this.weapon.allWeapons.slice();
-      this.weapon.mode = HERO_LOADOUT[this.hero][0];
+      this.weapon.owned = ["sword"];
+      this.weapon.mode = "sword";
       this.weapon._showViewmodel();
-      this.hud.setWeaponName(this._weaponName(this.weapon.mode));
+      this.hud.setWeaponName(this._weaponName("sword"));
     }
     this.objective.onPlayStart();
     this.hud.setGrenades(this.grenades);
@@ -518,8 +518,11 @@ class Game {
     const body = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.05, 2.2, 8), steel); body.position.y = 1.4; pod.add(body);
     const nose = new THREE.Mesh(new THREE.ConeGeometry(1.05, 1.4, 8), new THREE.MeshStandardMaterial({ color: 0x32363c, metalness: 0.6 })); nose.rotation.x = Math.PI; pod.add(nose);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(1.22, 0.1, 8, 16), glow); ring.rotation.x = Math.PI / 2; ring.position.y = 0.65; pod.add(ring);
+    // pod sized to its occupant — giant mechs ride big pods, drones tiny ones
+    const podScale = spec.kind === "robot" ? 2.2 : (spec.kind === "heavy" || spec.kind === "trex") ? 1.5 : spec.kind === "drone" ? 0.8 : 1.0;
+    pod.scale.setScalar(podScale);
     pod.position.set(spec.x, 230, spec.z); this.scene.add(pod);
-    (this._reinf || (this._reinf = [])).push({ pod, spec, gy, vy: 0 });
+    (this._reinf || (this._reinf = [])).push({ pod, spec, gy, vy: 0, podScale });
   }
 
   _updateReinforcements(dt) {
@@ -528,11 +531,11 @@ class Game {
       const r = this._reinf[i];
       r.vy += 70 * dt; r.pod.position.y -= r.vy * dt; r.pod.rotation.y += dt * 2;
       this.vfx.rocketTrail(new THREE.Vector3(r.pod.position.x + (Math.random() - 0.5) * 1.4, r.pod.position.y + 2.5 + Math.random() * 2, r.pod.position.z + (Math.random() - 0.5) * 1.4));
-      if (r.pod.position.y <= r.gy + 0.3) { // IMPACT — cool boom, then the enemy emerges
+      if (r.pod.position.y <= r.gy + 0.3 * (r.podScale || 1)) { // IMPACT — boom scaled to the pod, then the enemy emerges
         this._reinf.splice(i, 1); this.scene.remove(r.pod);
-        const c = new THREE.Vector3(r.spec.x, r.gy + 0.6, r.spec.z);
-        for (let k = 0; k < 5; k++) this.vfx.explosion(c.clone().add(new THREE.Vector3((Math.random() - 0.5) * 5, Math.random() * 1.5, (Math.random() - 0.5) * 5)), 2 + Math.random());
-        this.vfx._shockwave?.(c); for (let k = 0; k < 8; k++) this.vfx.dustBurst(c.clone().add(new THREE.Vector3((Math.random() - 0.5) * 9, 0.3, (Math.random() - 0.5) * 9)));
+        const ps = r.podScale || 1, c = new THREE.Vector3(r.spec.x, r.gy + 0.6, r.spec.z);
+        for (let k = 0; k < 5; k++) this.vfx.explosion(c.clone().add(new THREE.Vector3((Math.random() - 0.5) * 5 * ps, Math.random() * 1.5, (Math.random() - 0.5) * 5 * ps)), (2 + Math.random()) * ps);
+        this.vfx._shockwave?.(c); for (let k = 0; k < 8; k++) this.vfx.dustBurst(c.clone().add(new THREE.Vector3((Math.random() - 0.5) * 9 * ps, 0.3, (Math.random() - 0.5) * 9 * ps)));
         this.audio.explosion?.();
         this.combat.spawnEnemy(r.spec);
       }
@@ -776,7 +779,7 @@ class Game {
           if (gf.kind === "grenade") { this.grenades += 2; this.hud.setGrenades(this.grenades); this.hud.notify("+2 GRENADES · GIFT"); }
           else if (gf.kind === "health") { this.health = Math.min(this.cfg.player.maxHealth, this.health + 40); this.hud.setHealth(this.health, this.cfg.player.maxHealth); this.hud.notify("+40 HEALTH"); }
           else if (gf.kind === "armor") { this.armor = Math.min(this.maxArmor, this.armor + 50); this.hud.setArmor(this.armor, this.maxArmor); this.hud.notify("+50 ARMOR"); }
-          else if (gf.kind === "plasma" || gf.kind === "laser" || gf.kind === "shotgun") {
+          else if (this.weapon.allWeapons.includes(gf.kind)) {
             this.weapon.give(gf.kind); this.hud.setWeaponName(this._weaponName(gf.kind));
             this.hud.notify(`✦ ${this._weaponName(gf.kind)} ACQUIRED — Q to cycle`);
           } else { // ammo cache — resupply, then it respawns nearby after 10s

@@ -39,10 +39,10 @@ export const arcfall = {
     // TIME-BROKEN LANDMARKS — eras collided: real skyscrapers (some leaning), pyramids + a frozen Big Ben, SCATTERED
     b.clockTower(0, 6);                                                // ISLAND CENTRE · Big Ben, hands frozen — the centrepiece dead ahead of the drop
     b.skyscraper(112, 128, "b6", 0);                                  // front (player-facing) face of the NE mountain — in view
-    b.skyscraper(-120, 80, "b2", 0.13);                               // NW · toppling tower
-    b.skyscraper(-128, -58, "b4", -0.12);                             // SW · toppling tower
-    b.skyscraper(66, -120, "b1", 0.1);                                // S  · toppling tower
-    b.skyscraper(152, 24, "b3", 0);                                   // far E · upright tower
+    b.skyscraper(-120, 80, "b2", 0);                                  // NW · tower (upright so you can land on the roof)
+    b.skyscraper(-128, -58, "b4", 0);                                 // SW · tower
+    b.skyscraper(66, -120, "b1", 0);                                  // S  · tower
+    b.skyscraper(152, 24, "b3", 0);                                   // far E · tower
     b.pyramid(-150, 14, 27); b.pyramid(40, -120, 23); b.pyramid(52, 122, 26); // pyramids spread W / S / N (the N one fills the open ground where the leaning tower stood)
     b.car(9, 13, "racefuture"); b.car(-12, 7, "sportscar"); b.car(2, -15, "race"); // fast sports cars in the clear drop zone (press R)
 
@@ -63,7 +63,15 @@ export const arcfall = {
     // health packs (first-aid kits) + armor plates scattered widely — both are scarce
     for (const [x, z] of [[30, 60], [-60, 30], [80, -20], [-30, -70], [110, 70], [-110, 10], [10, 130], [-20, -10]]) b.giftCrate(x, z, "health");
     for (const [x, z] of [[50, 20], [-70, -20], [95, 35], [-40, 75], [25, -60], [-100, 50]]) b.giftCrate(x, z, "armor");
-    b.giftCrate(24, 14, "plasma");   // PLASMA CANNON near the drop
-    b.giftCrate(-50, 70, "laser");   // LASER RIFLE out by the lake
+    // SCATTERED GUNS — start with only the staff; find ALL guns around the island. Rarity: common x3, uncommon x2, rare x1
+    for (const [x, z] of [[22, 30], [-60, 40], [82, -8]]) b.giftCrate(x, z, "rifle");   // COMMON · Carbine x3
+    for (const [x, z] of [[14, -36], [-40, 70], [104, 36]]) b.giftCrate(x, z, "smg");   // COMMON · SMG x3
+    for (const [x, z] of [[-46, 8], [40, -72], [112, 60]]) b.giftCrate(x, z, "laser");  // COMMON · Laser Rifle x3
+    for (const [x, z] of [[-72, 52], [-96, -36]]) b.giftCrate(x, z, "minigun");         // UNCOMMON · Minigun x2
+    for (const [x, z] of [[60, -28], [12, 72]]) b.giftCrate(x, z, "plasma");            // UNCOMMON · Plasma Cannon x2
+    for (const [x, z] of [[-110, 24], [70, 96]]) b.giftCrate(x, z, "burst");            // UNCOMMON · Burst Rifle x2
+    for (const [x, z] of [[120, -36], [-30, -90]]) b.giftCrate(x, z, "flak");           // UNCOMMON · Flak Cannon x2
+    b.giftCrate(96, 70, "railgun");                                                     // RARE · Railgun x1
+    b.giftCrate(-20, 100, "launcher");                                                  // RARE · Rocket Launcher x1
   },
 };
