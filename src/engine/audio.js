@@ -123,9 +123,10 @@ export class Audio {
     setTimeout(() => this._tone(520, 0.06, "square", 0.2), 900);
     setTimeout(() => this._noiseBurst(0.05, 1800, 1, 0.15), 1100);
   }
-  hitmarker(killed) {
-    this._tone(killed ? 320 : 1400, 0.05, "square", 0.22);
-    if (killed) { this._tone(220, 0.12, "square", 0.2, 90); }
+  hitmarker(killed) { // crisp confirmation click (not a harsh square blip) + a satisfying low confirm on a kill
+    this._noiseBurst(0.03, 3400, 1.6, 0.12, "highpass"); // sharp tick
+    this._tone(killed ? 560 : 1500, 0.045, "triangle", 0.16);
+    if (killed) setTimeout(() => { this._tone(360, 0.16, "sine", 0.24, 170); this._tone(540, 0.14, "sine", 0.12); }, 28); // warm two-tone kill chime
   }
   hurt() {
     if (this.playBuf("hurt", 0.6, 0.9 + Math.random() * 0.15)) return;
@@ -345,7 +346,12 @@ export class Audio {
     try { m.bus.gain.setTargetAtTime(0, this.ctx.currentTime, 0.4); } catch { /* ctx gone */ }
     setTimeout(() => { try { m.bus.disconnect(); } catch { /* already gone */ } }, 1400);
   }
-  win() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this._tone(f, 0.18, "square", 0.22), i * 130)); }
+  win() { // full triumphant resolve — rising run into a sustained major chord + sparkle + warm root (no square blips)
+    [392, 523, 659, 784].forEach((f, i) => setTimeout(() => this._tone(f, 0.32, "triangle", 0.26), i * 90));
+    setTimeout(() => { for (const f of [523, 659, 784, 1047, 1319]) this._tone(f, 1.1, "sine", 0.14); }, 360); // sustained C-major chord
+    this._noiseBurst(0.6, 7000, 0.5, 0.14, "highpass"); // sparkle
+    setTimeout(() => this._tone(98, 0.95, "sine", 0.26, 55), 340); // warm low root
+  }
   lose() { // dramatic death sting: dull impact + a slow descending drone
     this._noiseBurst(0.5, 320, 0.6, 0.42);
     this._tone(200, 1.3, "sawtooth", 0.3, 46);
