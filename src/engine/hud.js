@@ -283,6 +283,45 @@ export class HUD {
     this._crawl = wrap;
   }
   hideCrawl() { if (this._crawlT) { clearTimeout(this._crawlT); this._crawlT = null; } if (this._crawl) { this._crawl.remove(); this._crawl = null; } }
+
+  // ── VICTORY CINEMATIC pieces ──
+  flashCut() { // a quick white flash-cut (the "big spaces" between rewound moments)
+    const el = this._flashEl || (this._flashEl = (() => { const d = document.createElement("div"); d.style.cssText = "position:fixed;inset:0;z-index:70;background:#fff;opacity:0;pointer-events:none;"; this.root.appendChild(d); return d; })());
+    el.style.transition = "none"; el.style.opacity = "0.9";
+    requestAnimationFrame(() => { el.style.transition = "opacity .22s ease-out"; el.style.opacity = "0"; });
+  }
+  collapseToDot(dur = 1400) { // everything implodes to a single bright point of light on black
+    const wrap = document.createElement("div"); wrap.id = "collapse";
+    wrap.style.cssText = "position:fixed;inset:0;z-index:71;background:#000;opacity:0;pointer-events:none;display:flex;align-items:center;justify-content:center;";
+    const dot = document.createElement("div");
+    dot.style.cssText = "width:70vw;height:70vw;border-radius:50%;background:radial-gradient(circle,#dff1ff 0%,#7cc0ff 28%,rgba(80,150,255,0.25) 52%,transparent 70%);";
+    wrap.appendChild(dot); this.root.appendChild(wrap); this._collapse = wrap;
+    wrap.animate([{ opacity: 0 }, { opacity: 1 }], { duration: dur * 0.55, fill: "forwards" });
+    dot.animate([{ transform: "scale(1)", opacity: 0.95 }, { transform: "scale(0.015)", opacity: 1 }], { duration: dur, easing: "cubic-bezier(.65,0,.85,1)", fill: "forwards" });
+  }
+  // the closing Star-Wars crawl over a starfield; onDone fires when the crawl is most of the way up
+  showEndCrawl(title, paragraphs, onDone, dur = 23000) {
+    if (this._collapse) { this._collapse.remove(); this._collapse = null; }
+    const wrap = document.createElement("div"); wrap.id = "endcrawl";
+    wrap.style.cssText = "position:fixed;inset:0;z-index:72;overflow:hidden;background:radial-gradient(ellipse at 50% 60%,#0b0826 0%,#04020c 70%);perspective:420px;perspective-origin:50% 0%;";
+    let stars = ""; for (let i = 0; i < 180; i++) { const x = (Math.random() * 100).toFixed(2), y = (Math.random() * 100).toFixed(2), s = (Math.random() * 2 + 0.5).toFixed(1), o = (0.25 + Math.random() * 0.75).toFixed(2); stars += `<i style="position:absolute;left:${x}%;top:${y}%;width:${s}px;height:${s}px;background:#fff;border-radius:50%;opacity:${o};box-shadow:0 0 ${s * 2}px #cfe6ff;"></i>`; }
+    const sky = document.createElement("div"); sky.style.cssText = "position:absolute;inset:0;"; sky.innerHTML = stars; wrap.appendChild(sky);
+    sky.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1400, fill: "forwards" });
+    const inner = document.createElement("div");
+    inner.style.cssText = "position:absolute;top:100%;left:50%;width:66%;transform-origin:50% 0%;transform:translateX(-50%) rotateX(34deg);color:#ffd23a;font-weight:800;text-align:center;text-shadow:0 0 24px rgba(255,180,40,.6);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.6;";
+    inner.innerHTML = `<div style="font-size:5vw;letter-spacing:.16em;margin-bottom:.8em;">${title}</div>` + paragraphs.map((p) => `<p style="font-size:2.35vw;margin:0 0 1.25em;">${p}</p>`).join("");
+    wrap.appendChild(inner); this.root.appendChild(wrap); this._endCrawl = wrap;
+    inner.animate([{ transform: "translateX(-50%) rotateX(34deg) translateY(0%)", opacity: 1 }, { offset: 0.92, transform: "translateX(-50%) rotateX(34deg) translateY(-330%)", opacity: 1 }, { transform: "translateX(-50%) rotateX(34deg) translateY(-380%)", opacity: 0 }], { duration: dur, easing: "linear", fill: "forwards" });
+    if (onDone) this._endCrawlT = setTimeout(onDone, dur * 0.66);
+  }
+  showEndButton(line = "The Arc-bearer's name passes into legend") {
+    const w = document.createElement("div"); w.style.cssText = "position:fixed;inset:0;z-index:73;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:9vh;pointer-events:none;";
+    w.innerHTML = `<div style="color:#bff0ff;font-weight:800;letter-spacing:.3em;text-align:center;margin-bottom:1.3em;text-shadow:0 0 18px rgba(120,220,255,.85);font-size:1.5vw;opacity:0;" class="el">${line}</div>`
+      + `<button id="enddeploy" style="pointer-events:auto;opacity:0;background:#ffd23a;color:#1a1206;border:none;padding:.7em 1.6em;font-weight:900;letter-spacing:.15em;font-size:1.2vw;cursor:pointer;border-radius:3px;box-shadow:0 4px 18px rgba(0,0,0,.5);" class="el">▶ REDEPLOY</button>`;
+    this.root.appendChild(w);
+    w.querySelectorAll(".el").forEach((e, i) => e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1200, delay: 300 + i * 400, fill: "forwards" }));
+    w.querySelector("#enddeploy").addEventListener("click", () => location.reload());
+  }
   // clean centered XIII-style banner (map-section entry etc.): bold text on a gold rule, sweeps in + fades
   showBanner(title, sub = "", dur = 2600) {
     this.hideBanner();

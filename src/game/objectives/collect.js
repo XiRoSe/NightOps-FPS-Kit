@@ -51,7 +51,7 @@ export class CollectObjective {
         g.hud.setCounter("Arcs", `${this.collected} / ${this.total}`);
         if (this.beats[this.collected]) g.hud.notify(this.beats[this.collected]);
         if (this.collected >= this.total) {
-          g._win({ title: 'Timeline <span class="hz">Restored</span>', sub: `All ${this.total} Arcs recovered — time mends and you return to your own` });
+          g._win({ cinematic: true, title: 'Timeline <span class="hz">Restored</span>', sub: `All ${this.total} Arcs recovered — time mends and you return to your own` });
           return;
         }
       }

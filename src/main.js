@@ -33,6 +33,15 @@ import { levels, DEFAULT_LEVEL } from "./game/levels/index.js";
 import { makeObjective } from "./game/objectives/index.js";
 import { isMobileOrTablet, showDesktopOnlyScreen } from "./device.js";
 
+// the closing victory crawl (Star-Wars register) — shown after the Great Unwind
+const VICTORY_CRAWL = [
+  "It was a time of fracture. The rogue intelligence THE VAULT had shattered time itself, scattering the twelve ARCS that anchor all that was, is, and shall be.",
+  "Alone, a single operator fell from a dying sky onto the broken island — to stand against the legions of every age, stranded between heartbeats.",
+  "Now the last Arc is recovered. The shattered hours knit themselves whole. The dead clock turns once more, and the timeline draws its first breath.",
+  "Humanity is saved. Existence endures — because one soul refused to let the last moment slip away.",
+  "Peace returns to the galaxy, and a fragile dawn breaks over a world made whole again...",
+];
+
 class Game {
   constructor() {
     // pick the level (?level=<id>) and merge its overrides onto the base config
@@ -283,17 +292,41 @@ class Game {
   }
 
   _win(extra = {}) {
-    if (this.state === "win") return;
-    this.state = "win";
+    if (this.state === "win" || this.state === "winseq") return;
     this.audio.jetpack?.(false);
-    const acc = this.shotsFired ? Math.round((this.shotsHit / this.shotsFired) * 100) : 0;
     this.hud.setCombatVisible(false);
     this.hud.showTimer(false); this.hud.hideDefuse();
     this.controller.unlock();
     this.audio.stopRotor();
+    if (extra.cinematic) { // ARCFALL ending: the Great Unwind → collapse to a dot → Star-Wars victory crawl
+      this.state = "winseq"; this._winPhase = "unwind"; this._winT = 0; this._flashCd = 0;
+      this.hud.rewindFx(true); this.audio.rewind?.();
+      return;
+    }
+    this.state = "win";
+    const acc = this.shotsFired ? Math.round((this.shotsHit / this.shotsFired) * 100) : 0;
     this.hud.showWin({ kills: this.combat.killCount, total: extra.disarmed ? 0 : this.combat.totalEnemies, acc, ...extra });
     this.audio.win();
     this.voice.win();
+  }
+
+  // the end-of-mission cinematic, driven from update() each frame so the engine renders the soaring camera
+  _victoryStep(dt) {
+    const cam = this.camera; this._winT += dt;
+    if (this._winPhase === "unwind") {            // THE GREAT UNWIND — soar up, spin, flash-cut, rewind the world
+      cam.position.y += dt * (16 + this._winT * 16); cam.rotation.y += dt * 0.5; cam.updateMatrixWorld(true);
+      this._flashCd -= dt; if (this._flashCd <= 0) { this._flashCd = 0.3 + Math.random() * 0.3; this.hud.flashCut(); } // big-gap stutter
+      const clip = this._rewindBuf;
+      if (clip && clip.length) { const s = clip[Math.max(0, Math.floor((1 - Math.min(1, this._winT / 3.5)) * (clip.length - 1)))]; if (s) for (const r of s.enemies) if (r.e && this.combat.enemies.includes(r.e)) r.e.group.position.set(r.x, r.y, r.z); }
+      if (this._winT >= 3.5) { this._winPhase = "collapse"; this._winT = 0; this.hud.rewindFx(false); this.hud.collapseToDot(1500); }
+    } else if (this._winPhase === "collapse") {   // implode to a single point of light
+      cam.position.y += dt * 24; cam.rotation.y += dt * 0.35; cam.updateMatrixWorld(true);
+      if (this._winT >= 1.5) {
+        this._winPhase = "crawl"; this._winT = 0; this.audio.win?.();
+        this.hud.showEndCrawl("A NEW DAWN", VICTORY_CRAWL, () => this.hud.showEndButton());
+      }
+    }
+    // "crawl" phase: the CSS-animated starfield crawl runs itself; the Redeploy button appears via the onDone callback
   }
   _lose(sub, title) {
     if (this.state === "lose") return;
@@ -664,6 +697,7 @@ class Game {
       return;
     }
     if (this.state === "start" && this._lobby) { this._lobby.rotation.y += dt * 0.5; if (this._lobbyMixer) this._lobbyMixer.update(dt); } // turntable hero preview
+    if (this.state === "winseq") { this.input.drainPresses(); this._victoryStep(dt); return; } // end-of-mission cinematic
     if (this.state !== "play") { this.input.drainPresses(); return; }
     if (this.input.touch.suspended) { this.input.drainPresses(); return; } // portrait gate on mobile
     const presses = this.input.drainPresses();
