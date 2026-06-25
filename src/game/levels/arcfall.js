@@ -41,7 +41,6 @@ export const arcfall = {
     b.skyscraper(112, 128, "b6", 0);                                  // front (player-facing) face of the NE mountain — in view
     b.skyscraper(-120, 80, "b2", 0);                                  // NW · tower (upright so you can land on the roof)
     b.skyscraper(-128, -58, "b4", 0);                                 // SW · tower
-    b.skyscraper(66, -120, "b1", 0);                                  // S  · tower
     b.skyscraper(152, 24, "b3", 0);                                   // far E · tower
     b.pyramid(-150, 14, 27); b.pyramid(40, -120, 23); b.pyramid(52, 122, 26); // pyramids spread W / S / N (the N one fills the open ground where the leaning tower stood)
     b.car(9, 13, "racefuture"); b.car(-12, 7, "sportscar"); b.car(2, -15, "race"); // fast sports cars in the clear drop zone (press R)

@@ -176,6 +176,20 @@ export class Audio {
       setTimeout(() => { try { j.src.stop(); } catch { /* stopped */ } try { j.o.stop(); } catch { /* stopped */ } }, 340);
     }
   }
+  railgun() { // BADASS railgun: rising charge whine → sharp electric crack → deep booming tail
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const charge = this.ctx.createOscillator(); charge.type = "sawtooth";
+    charge.frequency.setValueAtTime(280, t); charge.frequency.exponentialRampToValueAtTime(1900, t + 0.12);
+    const cg = this.ctx.createGain(); cg.gain.setValueAtTime(0.0001, t); cg.gain.exponentialRampToValueAtTime(0.16, t + 0.1); cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    charge.connect(cg); cg.connect(this.master); charge.start(t); charge.stop(t + 0.18);
+    this._noiseBurst(0.12, 4200, 1.6, 0.5, "highpass");       // sharp electric CRACK on release
+    const boom = this.ctx.createOscillator(); boom.type = "sine";
+    boom.frequency.setValueAtTime(150, t + 0.1); boom.frequency.exponentialRampToValueAtTime(42, t + 0.65);
+    const bg = this.ctx.createGain(); bg.gain.setValueAtTime(0.0001, t + 0.1); bg.gain.exponentialRampToValueAtTime(0.55, t + 0.14); bg.gain.exponentialRampToValueAtTime(0.0001, t + 0.72);
+    boom.connect(bg); bg.connect(this.master); boom.start(t + 0.1); boom.stop(t + 0.78);
+    this.playBuf?.("zap", 0.5);                               // electric zap layer (CC0) if present
+  }
   wade() { // a wet footstep: bright surface splash + a sloosh + a couple of droplet bloops
     this._noiseBurst(0.18, 2600, 0.4, 0.2, "lowpass");
     this._noiseBurst(0.26, 760, 0.7, 0.15, "lowpass");
@@ -187,13 +201,26 @@ export class Audio {
     this._noiseBurst(0.2, 440, 0.7, 0.1, "lowpass");
   }
   dropWhoosh() { if (this.playBuf("whoosh", 0.55, 0.8)) return; this._noiseBurst(7.0, 440, 0.4, 0.34); this._tone(190, 7.0, "sawtooth", 0.13, 64); } // descent rush
-  creature() { if (this.playBuf("creature", 0.55, 0.7 + Math.random() * 0.25)) return; this._tone(120, 0.34, "sawtooth", 0.3, 64); this._noiseBurst(0.18, 360, 0.8, 0.14); } // growl/bite
+  creature() { // a dinosaur ROAR/snarl, not a blip — sweeping growl + a detuned sub + raspy snarl
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const roar = (type, f0, f1, vol, dur) => {
+      const o = this.ctx.createOscillator(); o.type = type;
+      o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.8);
+      const g = this.ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.06); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      const lp = this.ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1100;
+      o.connect(lp); lp.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur + 0.05);
+    };
+    roar("sawtooth", 190, 70, 0.42, 0.6);  // main bellow
+    roar("square", 95, 46, 0.2, 0.55);     // guttural sub-growl
+    this._noiseBurst(0.42, 750, 1.3, 0.17, "bandpass"); // raspy snarl
+  }
   arcGet() { if (this.playBuf("pickup", 0.6)) return; this._tone(660, 0.12, "sine", 0.32); setTimeout(() => this._tone(990, 0.16, "sine", 0.32), 90); setTimeout(() => this._tone(1320, 0.26, "sine", 0.3), 185); }
-  arcFanfare() { // triumphant rising arpeggio + shimmer + a low swell — exciting "Arc recovered!"
-    [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => this._tone(f, 0.22, "triangle", 0.32), i * 80));
-    setTimeout(() => { this._tone(1568, 0.5, "sine", 0.3); this._tone(2093, 0.5, "sine", 0.18); }, 430); // bright capstone chord
-    this._noiseBurst(0.4, 6500, 0.5, 0.12, "highpass");  // sparkle shimmer
-    this._tone(98, 0.6, "sine", 0.22, 60);               // low swell
+  arcFanfare() { // BIG triumphant victory fanfare — rising run, a major-chord bloom, sparkle + deep boom
+    [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => setTimeout(() => this._tone(f, 0.45, "triangle", 0.3), i * 70));
+    setTimeout(() => { for (const f of [784, 988, 1175, 1568, 2349]) this._tone(f, 0.9, "sine", 0.15); }, 430); // soaring major chord
+    this._noiseBurst(0.55, 7000, 0.5, 0.16, "highpass"); // sparkle shimmer
+    setTimeout(() => { this._tone(90, 0.8, "sine", 0.32, 50); this._tone(180, 0.7, "sine", 0.2, 90); }, 380); // deep victory boom
   }
   // looping vehicle engine — real engine loop (pitch rises with speed); synth fallback
   startEngine() {

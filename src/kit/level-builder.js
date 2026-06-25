@@ -584,13 +584,13 @@ export class LevelBuilder {
   skyscraper(x, z, kind = "b1", tilt = 0) {
     const g = makeBuilding(kind); if (!g || !g.children.length) return;
     const gy = this._lowGround(x, z, 6);
-    g.position.set(x, gy, z); g.rotation.y = Math.random() * 6.28; g.rotation.z = tilt; g.rotation.x = tilt * 0.4;
+    // rotate in 90° steps so the axis-aligned collider matches the building footprint snugly (clean roof to stand on)
+    g.position.set(x, gy, z); g.rotation.y = Math.floor(Math.random() * 4) * (Math.PI / 2); g.rotation.z = tilt; g.rotation.x = tilt * 0.4;
     this.scene.add(g);
     const bb = new THREE.Box3().setFromObject(g), sz = new THREE.Vector3(); bb.getSize(sz);
     g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     this.solidMeshes.push(g);                                          // bullets hit it
-    const half = Math.max(6, Math.min(sz.x, sz.z) * 0.42);
-    (this.collide(x, z, half * 2, half * 2, sz.y * (tilt ? 0.45 : 0.92))).baseY = gy; // stand on top + blocks (leaning ones standable lower)
+    (this.collide(x, z, sz.x * 0.92, sz.z * 0.92, sz.y * 0.8)).baseY = gy; // snug footprint + flat standable top near the roof
   }
 
   // a weathered stone pyramid (ancient era) — climbable faces, bullets hit it
@@ -600,7 +600,8 @@ export class LevelBuilder {
     p.position.set(x, gy + size * 0.41 - 0.5, z); p.rotation.y = Math.PI / 4; p.castShadow = true; p.receiveShadow = true; this.scene.add(p);
     const cap = new THREE.Mesh(new THREE.ConeGeometry(size * 0.12, size * 0.14, 4), mat(0xd9b24a, { roughness: 0.5, flat: true })); cap.position.set(x, gy + size * 0.82 - 0.5, z); cap.rotation.y = Math.PI / 4; this.scene.add(cap);
     this.solidMeshes.push(p);
-    (this.collide(x, z, size * 0.9, size * 0.9, size * 0.6)).baseY = gy;
+    // stepped collider approximating the cone (concentric tiers) — you can climb it + never clip inside
+    for (const [wf, tf] of [[1.42, 0.28], [1.04, 0.5], [0.66, 0.7], [0.3, 0.82]]) (this.collide(x, z, size * wf, size * wf, size * tf)).baseY = gy;
   }
 
   // a Big Ben-style clock tower (real bell-tower GLB) with four glowing frozen clock faces
@@ -615,7 +616,9 @@ export class LevelBuilder {
       const hand = box(0.14, 1.0, 0.06, 0x201810); hand.position.set(dx, 22, dz); hand.rotation.set(0, ry, 1.4); g.add(hand); // hands frozen — time broke
     }
     this.scene.add(g); this.solidMeshes.push(g);
-    (this.collide(x, z, 7, 7, 9)).baseY = gy;
+    const bb = new THREE.Box3().setFromObject(g), sz = new THREE.Vector3(); bb.getSize(sz);
+    const half = Math.max(3, Math.min(sz.x, sz.z) * 0.4);
+    (this.collide(x, z, half * 2, half * 2, sz.y * 0.92)).baseY = gy; // full-height collider so you land on the roof, not fall inside
   }
 
   // A grand open temple/palace the player can climb into: a stepped stone base reached by a front
@@ -766,7 +769,7 @@ export class LevelBuilder {
     const fbm = (x, z) => vnoise(x, z) * 0.55 + vnoise(x * 2.1 + 5, z * 2.1 + 9) * 0.3 + vnoise(x * 4.3 + 11, z * 4.3 + 3) * 0.15;
     const hills = [{ x: -64, z: -44, h: 11, r: 58 }, { x: 78, z: 56, h: 8, r: 50 }, { x: 34, z: -96, h: 7, r: 42 }, { x: -100, z: 48, h: 9, r: 46 }];
     const mtns = [{ x: -82, z: -60, h: 38, r: 70 }, { x: 100, z: 78, h: 31, r: 60 }]; // tall CLIMBABLE peaks (snow-capped vantage points)
-    const h = (x, z) => {
+    const baseAt = (x, z) => { // terrain WITHOUT the lake basins
       const r = Math.hypot(x, z);
       let y = (1 - r / R) * 10;                                          // dome rising out of the sea
       if (r < R) y += (fbm(x * 0.022, z * 0.022) - 0.45) * 17 * (1 - r / R * 0.55); // rolling hills + valleys
@@ -774,7 +777,17 @@ export class LevelBuilder {
       for (const m of mtns) { const d = Math.hypot(x - m.x, z - m.z); if (d < m.r) y += m.h * Math.pow(Math.cos(d / m.r * Math.PI / 2), 2); } // gentler peaks (climbable, fewer facet gaps)
       if (r > R - 12 && r < R + 4) y *= 0.42;                            // flatten the beach near the waterline
       if (r > R) y = Math.min(y, 0.4) - (r - R) * (r - R) * 0.006;        // PLUNGE to deep ocean past the shore → the square plane edge sits far underwater (hidden)
-      for (const L of lakes) { const d = Math.hypot(x - L.x, z - L.z); if (d < L.r) y -= L.depth * (0.5 + 0.5 * Math.cos((d / L.r) * Math.PI)); }
+      return y;
+    };
+    for (const L of lakes) L.level = baseAt(L.x, L.z);                    // each lake's flat rim reference level
+    const h = (x, z) => {
+      let y = baseAt(x, z);
+      for (const L of lakes) { // carve a LEVEL-rimmed bowl so the flat water disc seats cleanly (no floating on slopes)
+        const d = Math.hypot(x - L.x, z - L.z); if (d >= L.r) continue;
+        const t = d / L.r, flat = Math.min(1, (1 - t) / 0.25);           // interior flattens to the rim level; outer 25% blends to natural terrain
+        const basin = L.level - L.depth * (0.5 + 0.5 * Math.cos(t * Math.PI)); // bowl, deepest at the centre
+        y = y * (1 - flat) + basin * flat;
+      }
       return y;
     };
     this.terrainHeight = h; this.seaLevel = 0; // sea surface (for swimming)
