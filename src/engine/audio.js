@@ -48,6 +48,7 @@ export class Audio {
       pickup: "/audio/pickup.ogg",
       splash: "/audio/splash.ogg",
       car_engine: "/audio/car_engine.ogg",
+      battle_theme: "/audio/battle_theme.mp3", // big file — loaded last so the SFX are ready first
     };
     for (const [name, url] of Object.entries(clips)) {
       try {
@@ -55,6 +56,8 @@ export class Audio {
         this.buffers[name] = await this.ctx.decodeAudioData(ab);
         // if the rotor is already running on the synth fallback, upgrade to the real clip now
         if (name === "helicopter" && this._rotorWanted && !this._rotorSrc) { this._stopSynthRotor(); this._startRealRotor(); }
+        // if the synth battle music is already playing, upgrade to the real Pacific Rim theme
+        if (name === "battle_theme" && this._battle && !this._battle.real) { this.stopBattleMusic(); this.startBattleMusic(); }
       } catch (e) { /* fall back to synth */ }
     }
   }
@@ -375,11 +378,19 @@ export class Audio {
     try { m.bus.gain.setTargetAtTime(0, this.ctx.currentTime, 0.4); } catch { /* ctx gone */ }
     setTimeout(() => { try { m.bus.disconnect(); } catch { /* already gone */ } }, 1400);
   }
-  // ── driving Pacific-Rim-style battle rock for gameplay: distorted power-chord riff + 4-on-the-floor drums + bass ──
+  // ── Pacific Rim battle theme for gameplay: the real CC track if loaded, else a synth rock fallback ──
   startBattleMusic() {
     if (!this.ctx || this._battle) return;
+    if (this.buffers.battle_theme) { // real Boris Harizanov "Pacific Rim" epic theme, looped
+      const s = this.ctx.createBufferSource(); s.buffer = this.buffers.battle_theme; s.loop = true;
+      const bus = this.ctx.createGain(); bus.gain.value = 0; bus.connect(this.master);
+      bus.gain.linearRampToValueAtTime(0.5, this.ctx.currentTime + 1.2);
+      s.connect(bus); s.start();
+      this._battle = { bus, src: s, real: true };
+      return;
+    }
     const ctx = this.ctx, bus = ctx.createGain(); bus.gain.value = 0; bus.connect(this.master);
-    bus.gain.linearRampToValueAtTime(0.28, ctx.currentTime + 1.2); // fade in, sits under the SFX
+    bus.gain.linearRampToValueAtTime(0.28, ctx.currentTime + 1.2); // synth fallback, sits under the SFX
     const curve = new Float32Array(1024); for (let i = 0; i < 1024; i++) curve[i] = Math.tanh((i / 512 - 1) * 4); // guitar overdrive
     const f = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
     const bpm = 146, beat = 60 / bpm, six = beat / 4;
@@ -411,7 +422,7 @@ export class Audio {
     const m = this._battle; if (!m) return; this._battle = null; m.stopped = true;
     if (m.interval) clearInterval(m.interval);
     try { m.bus.gain.setTargetAtTime(0, this.ctx.currentTime, 0.3); } catch { /* ctx gone */ }
-    setTimeout(() => { try { m.bus.disconnect(); } catch { /* already gone */ } }, 900);
+    setTimeout(() => { try { m.src && m.src.stop(); } catch { /* stopped */ } try { m.bus.disconnect(); } catch { /* already gone */ } }, 900);
   }
   win() { // full triumphant resolve — rising run into a sustained major chord + sparkle + warm root (no square blips)
     [392, 523, 659, 784].forEach((f, i) => setTimeout(() => this._tone(f, 0.32, "triangle", 0.26), i * 90));
