@@ -234,7 +234,7 @@ class Game {
           "The twelve <b>ARCS</b> that anchor the timeline now lie scattered across a broken island — torn loose from their own eras.",
           "Beasts, war-machines and lost soldiers from every age are stranded here, and they guard the fragments.",
           "Recover all twelve Arcs to <b>repair time</b> — and return to your own.",
-        ], 14000); },
+        ], 21000); }, // 1.5x slower scroll — readable
         () => { this.hud.hideCrawl(); this.audio.stopBattleMusic?.(); this.audio.dropWhoosh?.(); }) // crawl ends → music cuts, the capsule PLUMMETS with a huge whoosh
       : style === "parachute"
         ? new ParachuteIntro(this.scene, this.camera, sp, groundY, this.hero)

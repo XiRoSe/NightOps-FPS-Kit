@@ -11,7 +11,7 @@ export class DropPodIntro {
     this.spawn = new THREE.Vector3(spawn.x, groundY, spawn.z);
     this.phase = "crawl"; this.t = 0; this.hold = 0; this.done = false; this.impacted = false;
     this._calledCrawl = false; this._endedCrawl = false;
-    this.crawlDur = 14.0;  // slow-mo crawl descent (reads comfortably)
+    this.crawlDur = 21.0;  // slow-mo crawl descent — 1.5x slower so the opening text reads comfortably
     this.fallDur = 1.9;    // hard plummet
     this.startY = 330; this.hoverY = 250;
     this.pos = new THREE.Vector3(spawn.x, this.startY, spawn.z);
@@ -27,6 +27,7 @@ export class DropPodIntro {
     const cap = new THREE.Mesh(new THREE.ConeGeometry(1.15, 0.8, 8), steel); cap.position.y = 2.9; this.pod.add(cap);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(1.18, 0.09, 8, 16), glow); ring.rotation.x = Math.PI / 2; ring.position.y = 0.6; this.pod.add(ring);
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.9, 0.4, 8), glow); base.position.y = -0.5; this.pod.add(base); // thruster
+    this.pod.scale.setScalar(1.25); // big enough that the operator plausibly rides + climbs out of it
     this.pod.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     this.group.add(this.pod);
 
