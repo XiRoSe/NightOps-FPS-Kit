@@ -47,7 +47,7 @@ export const arcfall = {
                   [-44, 64], [90, -58], [-86, -52], [118, 42], [-118, -32], [16, 96]];
     for (const [x, z] of arcs) b.arc(x, z);
 
-    // No pre-placed enemies — the island starts empty; reinforcements DROP from the sky every 15s into a
+    // No pre-placed enemies — the island starts empty; reinforcements DROP from the sky every 10s into a
     // rotating section (handled in main._dropReinforcement). THE GUARDIAN boss waits at the palace as the finale.
     b.enemy({ kind: "robot", x: 44, z: -24, hp: 1600, scale: 2.0, boss: true });
 

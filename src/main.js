@@ -787,7 +787,7 @@ class Game {
     this._updateProjectiles(dt);
     // enemy reinforcements: drop a fresh enemy in a different section every 3s
     this._reinfT = (this._reinfT || 0) + dt;
-    if (this._reinfT >= 15 && this.combat.enemies.filter((e) => !e.dead).length < 60) { this._reinfT = 0; this._dropReinforcement(); }
+    if (this._reinfT >= 10 && this.combat.enemies.filter((e) => !e.dead).length < 60) { this._reinfT = 0; this._dropReinforcement(); }
     this._updateReinforcements(dt);
     this.level.updateDynamics(dt); // explosion-flung props (barrels, etc.)
 

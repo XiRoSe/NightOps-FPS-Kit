@@ -28,7 +28,7 @@ export class DropPodIntro {
     const nose = new THREE.Mesh(new THREE.ConeGeometry(R, 1.4, 8), dark); nose.position.y = -0.1; nose.rotation.x = Math.PI; this.pod.add(nose); // bottom point, base seams to body bottom (0.6)
     const ring = new THREE.Mesh(new THREE.TorusGeometry(R + 0.06, 0.1, 8, 16), glow); ring.rotation.x = Math.PI / 2; ring.position.y = 0.85; this.pod.add(ring);
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.8, 0.4, 8), glow); base.position.y = -0.7; this.pod.add(base);   // thruster
-    this.podScale = 1.25; this.pod.scale.setScalar(this.podScale); // big enough that the operator plausibly rides it
+    this.podScale = 1.0; this.pod.scale.setScalar(this.podScale); // original size (the look that read best)
     this.pod.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     this.group.add(this.pod);
 

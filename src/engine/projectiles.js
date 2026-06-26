@@ -43,8 +43,11 @@ export class Projectile {
 
     this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt; this.pos.y += this.vel.y * dt;
 
-    if (this.pos.y <= 0.14) {
-      this.pos.y = 0.14;
+    // land on the ACTUAL terrain surface (sculpted island), not a flat plane — so grenades bounce/explode on hills
+    const gy = (level && level.terrainHeight) ? Math.max(level.terrainHeight(this.pos.x, this.pos.z), level.seaLevel ?? 0) : 0;
+    const floor = gy + 0.14;
+    if (this.pos.y <= floor) {
+      this.pos.y = floor;
       if (this.detonateOnHit) { this.done = true; }
       else { this.vel.y *= -this.bounce; this.vel.x *= 0.6; this.vel.z *= 0.6; }
     }
