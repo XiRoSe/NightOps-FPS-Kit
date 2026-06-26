@@ -297,16 +297,17 @@ class Game {
 
   _win(extra = {}) {
     if (this.state === "win" || this.state === "winseq") return;
-    this.audio.jetpack?.(false); this.audio.stopBattleMusic?.();
+    this.audio.jetpack?.(false);
     this.hud.setCombatVisible(false);
     this.hud.showTimer(false); this.hud.hideDefuse();
     this.controller.unlock();
     this.audio.stopRotor();
     if (extra.cinematic) { // ARCFALL ending: the Great Unwind → collapse to a dot → Star-Wars victory crawl
-      this.state = "winseq"; this._winPhase = "unwind"; this._winT = 0; this._flashCd = 0;
-      this.hud.rewindFx(true); this.audio.rewind?.();
+      this.state = "winseq"; this._winPhase = "unwind"; this._winT = 0; this._flashCd = 0; this._reSfx = 0;
+      this.hud.rewindFx(true); // battle music keeps playing through the whole ending until Redeploy
       return;
     }
+    this.audio.stopBattleMusic?.(); // non-cinematic win: cut the music for the sting
     this.state = "win";
     const acc = this.shotsFired ? Math.round((this.shotsHit / this.shotsFired) * 100) : 0;
     this.hud.showWin({ kills: this.combat.killCount, total: extra.disarmed ? 0 : this.combat.totalEnemies, acc, ...extra });
@@ -317,16 +318,18 @@ class Game {
   // the end-of-mission cinematic, driven from update() each frame so the engine renders the soaring camera
   _victoryStep(dt) {
     const cam = this.camera; this._winT += dt;
-    if (this._winPhase === "unwind") {            // THE GREAT UNWIND — soar up, spin, flash-cut, rewind the world
-      cam.position.y += dt * (16 + this._winT * 16); cam.rotation.y += dt * 0.5; cam.updateMatrixWorld(true);
-      this._flashCd -= dt; if (this._flashCd <= 0) { this._flashCd = 0.3 + Math.random() * 0.3; this.hud.flashCut(); } // big-gap stutter
+    if (this._winPhase === "unwind") {            // THE GREAT UNWIND — slowly soar up, spin, flash-cut, rewind the world
+      const UNWIND = 8.5;
+      cam.position.y += dt * (7 + this._winT * 4); cam.rotation.y += dt * 0.28; cam.updateMatrixWorld(true);
+      this._flashCd -= dt; if (this._flashCd <= 0) { this._flashCd = 0.4 + Math.random() * 0.4; this.hud.flashCut(); } // big-gap stutter
+      this._reSfx = (this._reSfx || 0) - dt; if (this._reSfx <= 0) { this._reSfx = 1.7; this.audio.rewind?.(); } // keep the rewind warble going through the long unwind
       const clip = this._rewindBuf;
-      if (clip && clip.length) { const s = clip[Math.max(0, Math.floor((1 - Math.min(1, this._winT / 3.5)) * (clip.length - 1)))]; if (s) for (const r of s.enemies) if (r.e && this.combat.enemies.includes(r.e)) r.e.group.position.set(r.x, r.y, r.z); }
-      if (this._winT >= 3.5) { this._winPhase = "collapse"; this._winT = 0; this.hud.rewindFx(false); this.hud.collapseToDot(1500); }
+      if (clip && clip.length) { const s = clip[Math.max(0, Math.floor((1 - Math.min(1, this._winT / UNWIND)) * (clip.length - 1)))]; if (s) for (const r of s.enemies) if (r.e && this.combat.enemies.includes(r.e)) r.e.group.position.set(r.x, r.y, r.z); }
+      if (this._winT >= UNWIND) { this._winPhase = "collapse"; this._winT = 0; this.hud.rewindFx(false); this.hud.collapseToDot(2200); }
     } else if (this._winPhase === "collapse") {   // implode to a single point of light
-      cam.position.y += dt * 24; cam.rotation.y += dt * 0.35; cam.updateMatrixWorld(true);
-      if (this._winT >= 1.5) {
-        this._winPhase = "crawl"; this._winT = 0; this.audio.win?.();
+      cam.position.y += dt * 14; cam.rotation.y += dt * 0.22; cam.updateMatrixWorld(true);
+      if (this._winT >= 2.4) {
+        this._winPhase = "crawl"; this._winT = 0;
         this.hud.showEndCrawl("A NEW DAWN", VICTORY_CRAWL, () => this.hud.showEndButton());
       }
     }
@@ -705,9 +708,6 @@ class Game {
     if (this.input.touch.suspended) { this.input.drainPresses(); return; } // portrait gate on mobile
     const presses = this.input.drainPresses();
 
-    // ARC-SAND rewind: T winds the last ~5s backwards in a cool time-warp, then resumes from there
-    if (presses.includes("t")) this._startRewind();
-    if (this._rewinding) { this._updateRewind(dt); return; }
 
     // enter / exit a driveable car with E
     if (presses.includes("r") && (this.driving || (this.level.cars && this.level.cars.some((v) => (v.pos.x - this.camera.position.x) ** 2 + (v.pos.z - this.camera.position.z) ** 2 < (v.r + 1.5) ** 2)))) {
@@ -789,7 +789,7 @@ class Game {
     this._updateProjectiles(dt);
     // enemy reinforcements: drop a fresh enemy in a different section every 3s
     this._reinfT = (this._reinfT || 0) + dt;
-    if (this._reinfT >= 10 && this.combat.enemies.filter((e) => !e.dead).length < 60) { this._reinfT = 0; this._dropReinforcement(); }
+    if (this._reinfT >= 5 && this.combat.enemies.filter((e) => !e.dead).length < 60) { this._reinfT = 0; this._dropReinforcement(); }
     this._updateReinforcements(dt);
     this.level.updateDynamics(dt); // explosion-flung props (barrels, etc.)
 
@@ -906,53 +906,6 @@ class Game {
     while (buf.length > 2 && t - buf[0].t > 5.2) buf.shift();
   }
 
-  _startRewind() {
-    if (this._rewinding || this.driving) return;
-    const buf = this._rewindBuf;
-    if (!buf || buf.length < 8) return;                       // need some history
-    if (this._rewindCd && this._playTime < this._rewindCd) { this.hud.notify("ARC-SAND RECHARGING"); return; }
-    this._rewinding = true;
-    this._rewindClip = buf.slice();                           // newest last, oldest first (~5s ago)
-    this._rewindP = 1;                                        // 1 = now → 0 = 5s ago
-    this._rewindDur = 1.7;                                    // real seconds to play the 5s backwards (brisk slow-mo)
-    this.audio.rewind?.();
-    this.hud.rewindFx?.(true);
-    this._slerpA = this._slerpA || new THREE.Quaternion(); this._slerpB = this._slerpB || new THREE.Quaternion();
-  }
-
-  _applyRewindFrame(s) { // place player + enemies at snapshot s
-    this.controller.feetY = s.py; this.controller.vy = 0;
-    this.camera.position.set(s.px, s.py + (this.controller.eye || 1.6), s.pz);
-    this.camera.quaternion.set(s.qx, s.qy, s.qz, s.qw);
-    this.controller._euler && this.controller._euler.setFromQuaternion(this.camera.quaternion);
-    this.health = s.health; this.armor = s.armor;
-    for (const r of s.enemies) {
-      const e = r.e; if (!e || !this.combat.enemies.includes(e)) continue;
-      e.pos.x = r.x; e.pos.z = r.z; e.group.position.set(r.x, r.y, r.z); e.group.rotation.y = r.ry; e.hp = r.hp;
-      if (e.dead && !r.dead) { e.dead = false; e.removable = false; if (e.hitbox) { e.hitbox.visible = true; e.hitbox.userData.enemy = e; } } // revive ones that died in the window
-    }
-  }
-
-  _updateRewind(dt) {
-    const clip = this._rewindClip;
-    this._rewindP -= dt / this._rewindDur;
-    if (this._rewindP <= 0 || !clip || clip.length < 2) { // settle on the 5s-ago frame, resume
-      if (clip && clip.length) this._applyRewindFrame(clip[0]);
-      this._rewinding = false; this._rewindBuf = []; this._lastRec = undefined;
-      this._rewindCd = (this._playTime || 0) + 8;             // 8s cooldown
-      this.hud.rewindFx?.(false);
-      return;
-    }
-    const fi = this._rewindP * (clip.length - 1), i0 = Math.floor(fi), i1 = Math.min(clip.length - 1, i0 + 1), f = fi - i0;
-    const a = clip[i0], b = clip[i1], L = (u, v) => u + (v - u) * f;
-    this.controller.feetY = L(a.py, b.py); this.controller.vy = 0;
-    this.camera.position.set(L(a.px, b.px), L(a.py, b.py) + (this.controller.eye || 1.6), L(a.pz, b.pz));
-    this._slerpA.set(a.qx, a.qy, a.qz, a.qw); this._slerpB.set(b.qx, b.qy, b.qz, b.qw);
-    this._slerpA.slerp(this._slerpB, f); this.camera.quaternion.copy(this._slerpA);
-    for (const r of a.enemies) { const e = r.e; if (!e || !this.combat.enemies.includes(e)) continue; e.pos.x = r.x; e.pos.z = r.z; e.group.position.set(r.x, r.y, r.z); e.group.rotation.y = r.ry; }
-    this.hud._shake = Math.max(this.hud._shake || 0, 3); // subtle time-warp rumble
-    if (Math.random() < 0.5) this.vfx.dustBurst(new THREE.Vector3(this.camera.position.x + (Math.random() - 0.5) * 3, this.camera.position.y - 1 + Math.random() * 2, this.camera.position.z + (Math.random() - 0.5) * 3)); // sand swirl
-  }
 }
 
 // Gate to desktop/laptop for now (see device.js); phones/tablets get a "play on a computer" screen.

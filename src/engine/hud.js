@@ -176,7 +176,7 @@ export class HUD {
       <h1 class="mil-title">${title}</h1>
       ${heroRow}
       <button class="cta" id="deploy">▶ Click to Deploy</button>
-      <div class="controls"><kbd>WASD</kbd>/<kbd>↑↓←→</kbd> move &nbsp; <kbd>SHIFT</kbd> sprint &nbsp; <kbd>SPACE</kbd> jump &nbsp; <kbd>E</kbd> jetpack &nbsp; <kbd>Q</kbd> weapon &nbsp; <kbd>T</kbd> rewind &nbsp; <kbd>MOUSE</kbd> aim &nbsp; <kbd>CLICK</kbd> fire &nbsp; <kbd>R</kbd> reload<br>
+      <div class="controls"><kbd>WASD</kbd>/<kbd>↑↓←→</kbd> move &nbsp; <kbd>SHIFT</kbd> sprint &nbsp; <kbd>SPACE</kbd> jump &nbsp; <kbd>E</kbd> jetpack &nbsp; <kbd>Q</kbd> weapon &nbsp; <kbd>MOUSE</kbd> aim &nbsp; <kbd>CLICK</kbd> fire &nbsp; <kbd>R</kbd> reload<br>
       ${brief}</div>`);
     o.querySelector("#deploy").addEventListener("click", () => onDeploy());
     if (heroes) o.querySelectorAll(".herocard").forEach((b) => b.addEventListener("click", () => {
@@ -300,7 +300,7 @@ export class HUD {
     dot.animate([{ transform: "scale(1)", opacity: 0.95 }, { transform: "scale(0.015)", opacity: 1 }], { duration: dur, easing: "cubic-bezier(.65,0,.85,1)", fill: "forwards" });
   }
   // the closing Star-Wars crawl over a starfield; onDone fires when the crawl is most of the way up
-  showEndCrawl(title, paragraphs, onDone, dur = 23000) {
+  showEndCrawl(title, paragraphs, onDone, dur = 42000) { // slow scroll — comfortably readable
     if (this._collapse) { this._collapse.remove(); this._collapse = null; }
     const wrap = document.createElement("div"); wrap.id = "endcrawl";
     wrap.style.cssText = "position:fixed;inset:0;z-index:72;overflow:hidden;background:radial-gradient(ellipse at 50% 60%,#0b0826 0%,#04020c 70%);perspective:420px;perspective-origin:50% 0%;";
