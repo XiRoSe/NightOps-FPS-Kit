@@ -154,6 +154,15 @@ export class Audio {
   }
   // --- ARCFALL: synth sci-fi + creature + pickup sounds ---
   plasma() { if (this.playBuf("plasma", 0.5, 0.9 + Math.random() * 0.12)) return; this._tone(560, 0.2, "sawtooth", 0.3, 150); this._noiseBurst(0.12, 1400, 1, 0.12, "bandpass"); }
+  grenadeLaunch() { // grenade-launcher THOOMP — a hollow low pop with a fast pitch drop, an airy body + a mechanical click
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator(); o.type = "sine"; o.frequency.setValueAtTime(340, t); o.frequency.exponentialRampToValueAtTime(68, t + 0.13);
+    const g = this.ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.55, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + 0.22);
+    this._noiseBurst(0.17, 420, 1.5, 0.32, "bandpass"); // airy "thoomp" body
+    this._noiseBurst(0.03, 2700, 1.2, 0.13, "highpass"); // mechanical launch click
+  }
   zap() { if (this.playBuf("zap", 0.4)) return; this._noiseBurst(0.18, 3200, 0.6, 0.22, "bandpass"); this._tone(1000, 0.12, "square", 0.16, 2000); }
   laser(vol = 0.5) { if (this.playBuf("laser", vol, 1.4 + Math.random() * 0.15)) return; this._tone(880, 0.09, "square", 0.16 * (vol / 0.5), 300); this._noiseBurst(0.05, 2200, 1, 0.05); }
   beam(vol = 0.5) { if (this.playBuf("plasma", vol, 1.5 + Math.random() * 0.2)) return; this._tone(700, 0.16, "sawtooth", 0.2 * (vol / 0.5), 170); this._noiseBurst(0.1, 1800, 1, 0.06, "bandpass"); } // sci-fi laser BEAM

@@ -257,7 +257,7 @@ export class Weapon {
   }
 
   canFirePlasma(t) { return this.mode === "plasma" && !this.reloading && this.A.plasma.mag > 0 && (t - this._lastPlasma) >= this.plasmaRate; }
-  firePlasma(t) { this._lastPlasma = t; this.A.plasma.mag--; this.kick = 0.13; this.kickRot = 0.17; this.audio?.plasma?.(); if (this.A.plasma.mag === 0) this.reload(); }
+  firePlasma(t) { this._lastPlasma = t; this.A.plasma.mag--; this.kick = 0.13; this.kickRot = 0.17; this.audio?.grenadeLaunch?.(); if (this.A.plasma.mag === 0) this.reload(); }
   canFireLaser(t) { return this.mode === "laser" && !this.reloading && this.A.laser.mag > 0 && (t - this._lastLaser) >= this.laserRate; }
   fireLaser(t) { this._lastLaser = t; this.A.laser.mag--; this.kick = 0.04; this.kickRot = 0.05; this.audio?.laser?.(); if (this.A.laser.mag === 0) this.reload(); }
   canFireSword(t) { return this.mode === "sword" && (t - this._lastSword) >= this.swordRate; }

@@ -671,8 +671,9 @@ export class LevelBuilder {
       const c = cyl(0.45, 0.5, colH, stone, 9, { roughness: 0.9 }); c.position.set(x + dx, gy + baseH + colH / 2, z + dz); c.castShadow = true; this.scene.add(c);
       const cc = this.collide(x + dx, z + dz, 1.1, 1.1, baseH + colH); cc.baseY = gy;
     }
-    const roof = box(W + 4, 1.1, W + 4, stoneDark, { roughness: 0.9 }); roof.position.set(x, gy + baseH + colH + 0.55, z); roof.castShadow = true; this.scene.add(roof);
+    const roof = box(W + 4, 1.1, W + 4, stoneDark, { roughness: 0.9 }); roof.position.set(x, gy + baseH + colH + 0.55, z); roof.castShadow = true; this.scene.add(roof); this.solidMeshes.push(roof);
     const cap = box(W + 1, 0.7, W + 1, stone, { roughness: 0.9 }); cap.position.set(x, gy + baseH + colH + 1.4, z); this.scene.add(cap);
+    (this.collide(x, z, W + 4, W + 4, baseH + colH + 1.1)).baseY = gy; // the flat roof is standable (jetpack up onto it)
     // grand front staircase (+z): each step is a SOLID block from below-ground up to its tread height,
     // so the stair sits on the terrain (no floating) and rises to meet the floor edge.
     const steps = Math.ceil(baseH / 0.3), floorEdge = z + (W + 2) / 2;
