@@ -229,13 +229,13 @@ class Game {
     this.intro = style === "droppod"
       ? new DropPodIntro(this.scene, this.camera, sp, groundY, this.hero, this.vfx, this.audio,
         () => { this.hud._shake = Math.max(this.hud._shake || 0, 28); }, // big blast shake on impact
-        () => { this.voice.deploy(); this.hud.showCrawl("ARCFALL", [ // radio call + Star-Wars story crawl during the fall
+        () => { this.voice.deploy(); this.audio.stopLobbyMusic?.(); this.audio.startBattleMusic?.(); this.hud.showCrawl("ARCFALL", [ // rock kicks in + the Star-Wars story crawl during the fall
           "An unexpected <b>anomaly</b> has shattered <b>TIME</b> itself.",
           "The twelve <b>ARCS</b> that anchor the timeline now lie scattered across a broken island — torn loose from their own eras.",
           "Beasts, war-machines and lost soldiers from every age are stranded here, and they guard the fragments.",
           "Recover all twelve Arcs to <b>repair time</b> — and return to your own.",
         ], 14000); },
-        () => this.hud.hideCrawl())
+        () => { this.hud.hideCrawl(); this.audio.stopBattleMusic?.(); this.audio.dropWhoosh?.(); }) // crawl ends → music cuts, the capsule PLUMMETS with a huge whoosh
       : style === "parachute"
         ? new ParachuteIntro(this.scene, this.camera, sp, groundY, this.hero)
         : new Intro(this.scene, this.camera, sp);
@@ -276,6 +276,7 @@ class Game {
     this.objective.onPlayStart();
     this.hud.setGrenades(this.grenades);
     this.touch.show();
+    this.audio.stopLobbyMusic?.(); this.audio.startBattleMusic?.(); // swap the chill select-screen groove for driving battle rock
     if (!this._deployed) { this._deployed = true; this.voice.deploy(); this._timeLeft = 300; } // 5:00 mission clock
     this.state = "play";
   }
@@ -293,7 +294,7 @@ class Game {
 
   _win(extra = {}) {
     if (this.state === "win" || this.state === "winseq") return;
-    this.audio.jetpack?.(false);
+    this.audio.jetpack?.(false); this.audio.stopBattleMusic?.();
     this.hud.setCombatVisible(false);
     this.hud.showTimer(false); this.hud.hideDefuse();
     this.controller.unlock();
@@ -331,7 +332,7 @@ class Game {
   _lose(sub, title) {
     if (this.state === "lose") return;
     this.state = "lose";
-    this.audio.jetpack?.(false);
+    this.audio.jetpack?.(false); this.audio.stopBattleMusic?.();
     this.audio.stopRotor();
     this.hud.setCombatVisible(false);
     this.hud.showTimer(false); this.hud.hideDefuse();

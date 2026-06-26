@@ -225,7 +225,17 @@ export class Audio {
     this._noiseBurst(0.34, 1000, 0.6, 0.15, "lowpass");
     this._noiseBurst(0.2, 440, 0.7, 0.1, "lowpass");
   }
-  dropWhoosh() { if (this.playBuf("whoosh", 0.55, 0.8)) return; this._noiseBurst(7.0, 440, 0.4, 0.34); this._tone(190, 7.0, "sawtooth", 0.13, 64); } // descent rush
+  dropWhoosh() { // a HUGE capsule-plummet: real whoosh sample + a rising wind sweep (faster as it falls) + deep rumble
+    this.playBuf("whoosh", 0.7, 0.78);
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime, dur = 2.8;
+    const ns = this.ctx.createBufferSource(); ns.buffer = this._noise; ns.loop = true;
+    const bp = this.ctx.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 0.8;
+    bp.frequency.setValueAtTime(240, t); bp.frequency.exponentialRampToValueAtTime(3600, t + dur);
+    const g = this.ctx.createGain(); g.gain.setValueAtTime(0.05, t); g.gain.exponentialRampToValueAtTime(0.42, t + dur * 0.8); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    ns.connect(bp); bp.connect(g); g.connect(this.master); ns.start(t); ns.stop(t + dur + 0.05);
+    this._tone(140, dur, "sawtooth", 0.2, 48); // deep falling rumble
+  }
   creature() { // DINOSAUR ROAR via FORMANT SYNTHESIS — a glottal growl shaped by vocal-tract resonances (sounds like a throat, not a tone)
     if (!this.ctx) return;
     const t = this.ctx.currentTime, dur = 1.15;
@@ -359,6 +369,44 @@ export class Audio {
     if (m.interval) clearInterval(m.interval);
     try { m.bus.gain.setTargetAtTime(0, this.ctx.currentTime, 0.4); } catch { /* ctx gone */ }
     setTimeout(() => { try { m.bus.disconnect(); } catch { /* already gone */ } }, 1400);
+  }
+  // ── driving Pacific-Rim-style battle rock for gameplay: distorted power-chord riff + 4-on-the-floor drums + bass ──
+  startBattleMusic() {
+    if (!this.ctx || this._battle) return;
+    const ctx = this.ctx, bus = ctx.createGain(); bus.gain.value = 0; bus.connect(this.master);
+    bus.gain.linearRampToValueAtTime(0.28, ctx.currentTime + 1.2); // fade in, sits under the SFX
+    const curve = new Float32Array(1024); for (let i = 0; i < 1024; i++) curve[i] = Math.tanh((i / 512 - 1) * 4); // guitar overdrive
+    const f = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
+    const bpm = 146, beat = 60 / bpm, six = beat / 4;
+    const m = { bus, stopped: false, interval: null }; this._battle = m;
+    const chord = (rootMidi, t, dur, vol, sus) => { // distorted power chord (root + 5th + octave)
+      const sh = ctx.createWaveShaper(); sh.curve = curve; sh.oversample = "2x";
+      const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = sus ? 2700 : 1700;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+      if (sus) { g.gain.setValueAtTime(vol * 0.8, t + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); }
+      else g.gain.exponentialRampToValueAtTime(0.0001, t + Math.min(dur, 0.14)); // palm-mute chug
+      sh.connect(lp); lp.connect(g); g.connect(bus);
+      for (const s of [0, 7, 12]) { const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = f(rootMidi + s); o.connect(sh); o.start(t); o.stop(t + dur + 0.05); }
+    };
+    const bass = (midi, t, dur, vol) => { const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = f(midi); const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 300; const g = ctx.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(lp); lp.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.03); };
+    const kick = (t) => { const o = ctx.createOscillator(); o.type = "sine"; o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.1); const g = ctx.createGain(); g.gain.setValueAtTime(0.6, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18); o.connect(g); g.connect(bus); o.start(t); o.stop(t + 0.2); };
+    const snare = (t) => { const s = ctx.createBufferSource(); s.buffer = this._noise; const bp = ctx.createBiquadFilter(); bp.type = "highpass"; bp.frequency.value = 1800; const g = ctx.createGain(); g.gain.setValueAtTime(0.34, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.16); s.connect(bp); bp.connect(g); g.connect(bus); s.start(t); s.stop(t + 0.18); const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = 190; const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.16, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.12); o.connect(g2); g2.connect(bus); o.start(t); o.stop(t + 0.14); };
+    const hat = (t, open) => { const s = ctx.createBufferSource(); s.buffer = this._noise; const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 7000; const g = ctx.createGain(); g.gain.setValueAtTime(open ? 0.1 : 0.06, t); g.gain.exponentialRampToValueAtTime(0.001, t + (open ? 0.18 : 0.05)); s.connect(hp); hp.connect(g); g.connect(bus); s.start(t); s.stop(t + 0.2); };
+    // E-minor heroic riff: palm-muted E gallop with G/A accents + a sustained C/A lift (Pacific-Rim feel). MIDI roots E2=40,G2=43,A2=45,C3=48
+    const RIFF = [{ b: 40, s: 0, d: 0.5 }, { b: 40, s: 2, d: 0.3 }, { b: 40, s: 3, d: 0.3 }, { b: 43, s: 4, d: 0.5 }, { b: 40, s: 6, d: 0.3 }, { b: 45, s: 7, d: 0.5 }, { b: 40, s: 8, d: 0.5 }, { b: 40, s: 10, d: 0.3 }, { b: 40, s: 11, d: 0.3 }, { b: 48, s: 12, d: 1.0, sus: true }, { b: 45, s: 14, d: 1.0, sus: true }];
+    const playBar = () => {
+      if (m.stopped) return; const t0 = ctx.currentTime + 0.05;
+      for (let bt = 0; bt < 4; bt++) { kick(t0 + bt * beat); if (bt % 2 === 1) snare(t0 + bt * beat); }
+      for (let h = 0; h < 8; h++) hat(t0 + h * beat * 0.5, h === 7);
+      for (const n of RIFF) { const t = t0 + n.s * six; chord(n.b + 12, t, n.d * beat, 0.15, n.sus); bass(n.b, t, n.d * beat, 0.22); }
+    };
+    playBar(); m.interval = setInterval(playBar, beat * 4 * 1000);
+  }
+  stopBattleMusic() {
+    const m = this._battle; if (!m) return; this._battle = null; m.stopped = true;
+    if (m.interval) clearInterval(m.interval);
+    try { m.bus.gain.setTargetAtTime(0, this.ctx.currentTime, 0.3); } catch { /* ctx gone */ }
+    setTimeout(() => { try { m.bus.disconnect(); } catch { /* already gone */ } }, 900);
   }
   win() { // full triumphant resolve — rising run into a sustained major chord + sparkle + warm root (no square blips)
     [392, 523, 659, 784].forEach((f, i) => setTimeout(() => this._tone(f, 0.32, "triangle", 0.26), i * 90));
