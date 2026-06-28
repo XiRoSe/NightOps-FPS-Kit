@@ -110,7 +110,7 @@ may use both. That's why there are two clean reuse tiers — take just `engine/`
 register it in `levels/index.js` → lay out your map with the `LevelBuilder` calls → retune
 `config.balance` → (optionally) add an objective or weapon module. Then `npm run lint && npm run build`.
 
-- **[.claude/skills/](.claude/skills/)** — the AI-first task skills: the `LevelBuilder` cheat-sheet,
+- **[skills/](skills/)** — the AI-first task skills: the `LevelBuilder` cheat-sheet,
   adding a level/weapon/enemy/audio, verifying in-browser, and shipping. Start with `engine-overview`.
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — the full module map + the dependency rule.
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — the boundary rule, where-things-go table, house style, CI.

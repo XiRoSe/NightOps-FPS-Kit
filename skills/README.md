@@ -4,11 +4,13 @@ These are **agent skills** for building on this Three.js + Vite browser game eng
 the relevant one on demand (each `SKILL.md` has a `description` saying *when* to use it). They replace the
 old prose docs with task-scoped, verified, actionable knowledge.
 
-Start with **`engine-overview`** (the tier rule + gotchas), then reach for the task skill:
+**Building a whole game or a big feature? Start with `build-game`** (the end-to-end playbook — it routes you
+through the steps below). For a single change, read `engine-overview` then grab the matching task skill:
 
 | Skill | Use when |
 |-------|----------|
-| `engine-overview`     | **read first** — tiers, damage scales, colliders, the runner, the gotchas |
+| `build-game`          | **START HERE** — build a game/level end-to-end; routes to every skill below |
+| `engine-overview`     | read first for any change — tiers, damage scales, colliders, the runner, the gotchas |
 | `add-level`           | adding/editing a level + the LevelBuilder toolkit |
 | `terrain`             | sculpted ground, lakes, sea, seating props/structures/roofs on slopes |
 | `add-weapon`          | adding/debugging a weapon (note: the rifle is the *primary*, not a dict-gun) |
