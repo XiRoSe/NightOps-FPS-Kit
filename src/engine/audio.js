@@ -20,7 +20,7 @@ export class Audio {
     const data = buf.getChannelData(0);
     for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
     this._noise = buf;
-    this._loadClips();
+    this.clipsReady = this._loadClips(); // a promise the loader can await so music (incl. the big tracks) is decoded before play
   }
   async _loadClips() {
     const clips = {

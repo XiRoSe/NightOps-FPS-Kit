@@ -133,7 +133,8 @@ class Game {
     this.hud.showLoading();
     this.audio.ensure(); // create the (suspended) audio context now so clips — incl. the heli rotor — preload before Deploy
     // load models progressively (async, off the main thread) with a progress readout
-    const jobs = [preloadEnemies(), preloadHeli(), preloadOperator(), preloadVehicles(), preloadPickups(), preloadWeapons(), preloadCreatures(), preloadNature(), preloadFpWeapons(), preloadBuildings()];
+    const jobs = [preloadEnemies(), preloadHeli(), preloadOperator(), preloadVehicles(), preloadPickups(), preloadWeapons(), preloadCreatures(), preloadNature(), preloadFpWeapons(), preloadBuildings(),
+      this.audio.clipsReady || Promise.resolve()]; // also wait for all audio (incl. the Pacific Rim + Alien Boy tracks) so music is ready the moment the mission begins
     let done = 0; this.hud.setLoadingProgress(0, jobs.length + 1);
     jobs.forEach((p) => p.then(() => this.hud.setLoadingProgress(++done, jobs.length + 1)));
     await Promise.all(jobs);
