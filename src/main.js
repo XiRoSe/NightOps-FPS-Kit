@@ -10,6 +10,7 @@ import { Weapon } from "./kit/weapon.js";
 import { VFX } from "./engine/vfx.js";
 import { TouchControls } from "./engine/touch.js";
 import { LaserSight } from "./engine/laser-sight.js";
+import { trackStart, trackEnd } from "./engine/analytics.js";
 import { LevelBuilder } from "./kit/level-builder.js";
 import { Destructibles } from "./kit/destructibles.js";
 // game — this game's content + rules
@@ -225,6 +226,7 @@ class Game {
   // Fast-rope insertion cinematic, then hand control to the player.
   _beginIntro() {
     if (this.state === "intro" || this._introDone) return;
+    trackStart(); // count a play (the moment they commit to the mission)
     if (!this.cfg.intro.enabled) { this._introDone = true; this._startPlay(); return; }
     this.state = "intro";
     this._disposeLobby();
@@ -304,6 +306,7 @@ class Game {
 
   _win(extra = {}) {
     if (this.state === "win" || this.state === "winseq") return;
+    trackEnd(); // session ended (victory)
     this.audio.jetpack?.(false);
     this.hud.setCombatVisible(false);
     this.hud.showTimer(false); this.hud.hideDefuse();
@@ -344,6 +347,7 @@ class Game {
   }
   _lose(sub, title) {
     if (this.state === "lose") return;
+    trackEnd(); // session ended (defeat)
     this.state = "lose";
     this.audio.jetpack?.(false); this.audio.stopBattleMusic?.();
     this.audio.stopRotor();
