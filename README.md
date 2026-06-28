@@ -56,8 +56,8 @@ build your **own** FPS level or game on top of it fast.
 - Click **Deploy** to lock the mouse and start.
 
 > **Desktop / laptop only for now.** The game gates phones & tablets with a "play on a computer"
-> screen (mobile touch controls exist in `engine/touch.js` but are disabled — see
-> [docs/BUILDING.md](docs/BUILDING.md#re-enabling-mobile)). Input is read by **physical key**
+> screen (mobile touch controls exist in `engine/touch.js` but are disabled — the gate lives in
+> `src/device.js`, called at the bottom of `main.js`). Input is read by **physical key**
 > (`event.code`), so non-Latin keyboard layouts (Hebrew, Russian, …) work without switching to English.
 
 ## Run it
@@ -110,8 +110,8 @@ may use both. That's why there are two clean reuse tiers — take just `engine/`
 register it in `levels/index.js` → lay out your map with the `LevelBuilder` calls → retune
 `config.balance` → (optionally) add an objective or weapon module. Then `npm run lint && npm run build`.
 
-- **[docs/BUILDING.md](docs/BUILDING.md)** — the hands-on guide: the `LevelBuilder` API cheat-sheet,
-  adding & registering a level, retuning, objectives, weapons, enemies, destructibles, assets.
+- **[.claude/skills/](.claude/skills/)** — the AI-first task skills: the `LevelBuilder` cheat-sheet,
+  adding a level/weapon/enemy/audio, verifying in-browser, and shipping. Start with `engine-overview`.
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — the full module map + the dependency rule.
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — the boundary rule, where-things-go table, house style, CI.
 - **[AGENTS.md](AGENTS.md)** — building with **Claude / an AI agent**? This hands your agent the
@@ -123,8 +123,8 @@ register it in `levels/index.js` → lay out your map with the `LevelBuilder` ca
   (via the GitHub web UI) to run lint + build on every PR.
 - **A `npm test` smoke harness** — formalize the `window.__game` checks (LOS, shot counts, code solves).
 - **Grow "The Lost Arcs"** — more weapons/monsters, a robot boss fight, biomes, day/night cycle.
-- **Re-enable mobile** — the touch controls (`engine/touch.js`) are intact, just gated off; see
-  [docs/BUILDING.md](docs/BUILDING.md#re-enabling-mobile).
+- **Re-enable mobile** — the touch controls (`engine/touch.js`) are intact, just gated off in
+  `src/device.js` (called at the bottom of `main.js`).
 - Known nit: a few enemies can settle slightly into the ground on death (cosmetic).
 
 ## Tech

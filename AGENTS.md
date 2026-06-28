@@ -2,8 +2,9 @@
 
 You're working in **NightOps FPS Kit**, a Three.js + Vite first-person shooter. This file hands you
 the conventions and the verification workflow so you don't rediscover them by trial and error. Read
-[ARCHITECTURE.md](ARCHITECTURE.md) for the module map and [docs/BUILDING.md](docs/BUILDING.md) for
-the content APIs.
+[ARCHITECTURE.md](ARCHITECTURE.md) for the module map and the task skills in
+[.claude/skills/](.claude/skills/) for the content APIs (add-level, add-weapon, add-enemy, add-audio,
+verify-in-browser, ship-changes).
 
 ## Mental model
 
@@ -69,14 +70,17 @@ a blast. When you do screenshot, set the camera explicitly and call `g.engine.ou
   preload GLBs at boot, and "warm up" anything whose first use would hitch (the gunship is pre-compiled
   at boot for this reason).
 
-## Adding content (pointers)
+## Adding content (pointers — full how-to in `.claude/skills/`)
 
-- **Level** → a module in `src/game/levels/` + register in `levels/index.js`. See BUILDING.md §1.
-- **Tuning** → `src/game/config.js` `balance` (+ per-level `config` overrides via `mergeConfig`). §2.
-- **Objective** → a module in `src/game/objectives/` + a line in its `index.js` registry. §3.
-- **Weapon** → viewmodel in `kit/weapon.js` + key in `main.js` + hitscan (`combat`) or `Projectile`. §4.
+- **Level** → a module in `src/game/levels/` + register in `levels/index.js`. Skill: `add-level`.
+- **Tuning** → `src/game/config.js` `balance` (+ per-level `config` overrides via `mergeConfig`).
+- **Objective** → a module in `src/game/objectives/` + a line in its `index.js` registry.
+- **Weapon** → viewmodel in `kit/weapon.js` + a fire branch in `main.js` (the rifle is the *primary*,
+  not a dict-gun). Skill: `add-weapon`.
+- **Enemy** → `game/actors/{enemy,monster,robot}.js` + `combat.spawnEnemy`. Skill: `add-enemy`.
+- **Audio** → `engine/audio.js` real-clip-with-synth-fallback. Skill: `add-audio`.
 - **Destructible** → tag `userData.explosive`/`vehicle`, push to `level.explosives`/`vehicles`, hook in
-  `combat.js` → `kit/destructibles.js`. §5.
+  `combat.js` → `kit/destructibles.js`.
 
 ## Conventions for commits/deploys
 

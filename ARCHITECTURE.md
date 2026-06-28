@@ -83,6 +83,6 @@ what makes a thing solid for *everything* at once.
 
 ## Where to go next
 
-- **[docs/BUILDING.md](docs/BUILDING.md)** — build & register a level, retune via config, add objectives,
-  weapons, enemies, destructibles, assets.
+- **[.claude/skills/](.claude/skills/)** — the AI-first task skills: build & register a level, add a
+  weapon/enemy/audio, verify in-browser, and ship. Start with `engine-overview`.
 - **[AGENTS.md](AGENTS.md)** — conventions + the in-browser verification workflow for AI agents.

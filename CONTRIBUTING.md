@@ -53,7 +53,7 @@ jobs:
 walls/vehicles/objectives, it belongs in `kit/` or `game/` — or inject the data (see how `config.balance`
 is passed into `LevelBuilder`).
 
-## Where things go (full how-to in [docs/BUILDING.md](docs/BUILDING.md))
+## Where things go (full how-to in the [.claude/skills/](.claude/skills/) task skills)
 
 | Want to add… | Do this |
 |---|---|
