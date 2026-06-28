@@ -307,7 +307,7 @@ class Game {
 
   _win(extra = {}) {
     if (this.state === "win" || this.state === "winseq") return;
-    trackEnd(); // session ended (victory)
+    trackEnd(true); // game FINISHED (victory)
     this.audio.jetpack?.(false);
     this.hud.setCombatVisible(false);
     this.hud.showTimer(false); this.hud.hideDefuse();
@@ -341,7 +341,7 @@ class Game {
   }
   _lose(sub, title) {
     if (this.state === "lose") return;
-    trackEnd(); // session ended (defeat)
+    trackEnd(false); // session ended (defeat — not a finish)
     this.state = "lose";
     this.audio.jetpack?.(false); this.audio.stopBattleMusic?.(); this.audio.stopGameMusic?.();
     this.audio.stopRotor();

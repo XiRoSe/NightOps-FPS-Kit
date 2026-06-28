@@ -10,11 +10,11 @@ export function trackStart() {
   } catch { /* offline / blocked — ignore */ }
 }
 
-export function trackEnd() {
+export function trackEnd(finished = false) {
   if (!active || sent) return;
   sent = true; active = false;
   const ms = Date.now() - t0;
-  const body = JSON.stringify({ type: "end", ms });
+  const body = JSON.stringify({ type: "end", ms, finished: !!finished }); // finished = actually beat the game (not just left)
   try {
     if (navigator.sendBeacon) navigator.sendBeacon("/api/track", new Blob([body], { type: "application/json" }));
     else fetch("/api/track", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
