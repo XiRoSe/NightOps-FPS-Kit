@@ -411,7 +411,7 @@ class Game {
     this.playerModel.setWeapon(this.weapon.mode);                 // Rick holds the weapon he's actually using
     this.playerModel.group.position.set(c.pos.x, c.feetY, c.pos.z);
     this.playerModel.group.rotation.y = Math.atan2(fwd.x, fwd.z); // face the look dir (we see Rick's back)
-    this.playerModel.update(dt, c.moving && c.onGround, 1);
+    this.playerModel.update(dt, c.moving && c.onGround, this.input.isDown("shift") ? 2 : 1); // sprint → 2x (8x anim)
     if (this.input.mouseDown && this.weapon.mode !== "sword") this.playerModel.fireKick(); // recoil while shooting
     for (const g of [this.weapon.group, this.weapon.launcher, this.weapon.energy, this.weapon.laserGun, this.weapon.shotgunGun, this.weapon.sword]) if (g) g.visible = false;
   }

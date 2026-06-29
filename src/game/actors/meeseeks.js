@@ -35,15 +35,10 @@ export class Meeseeks {
       this._glb = true;
     } else { this._buildProcedural(); }
 
-    if (this.weapon !== "melee") {                              // held weapon on the hand bone (follows the animation)
-      const holder = this._hand || this.group;
-      this._gun = makeHeldGun(this.weapon === "rocket" ? "rocket" : "rifle");
-      holder.add(this._gun);
-      if (this._hand) { // size to the bone's real world scale (~0.6m) + aim down the arm
-        this._hand.updateWorldMatrix(true, false);
-        const ws = new THREE.Vector3(); this._hand.getWorldScale(ws); const kk = (this.huge ? 0.8 : 0.6) / (ws.x || 1);
-        this._gun.scale.setScalar(kk); this._gun.position.set(0, 0, 0); this._gun.rotation.set(Math.PI / 2, 0, 0);
-      } else { this._gun.scale.setScalar(this.huge ? 1.5 : 1); this._gun.position.set(0.42 * this.sc, 1.15 * this.sc, 0.32 * this.sc); }
+    if (this.weapon !== "melee") {                              // held weapon: parented to the group (native scale),
+      this._gun = makeHeldGun(this.weapon === "rocket" ? "rocket" : "rifle"); // snapped to the hand bone + pointing forward each frame
+      this._gun.scale.setScalar(this.huge ? 1.5 : 1.0); this.group.add(this._gun); this._tmp = new THREE.Vector3();
+      if (!this._hand) this._gun.position.set(0.42 * this.sc, 1.15 * this.sc, 0.32 * this.sc);
     }
 
     const hbW = 1.1 * this.sc, hbH = 2.0 * this.sc;
@@ -113,6 +108,10 @@ export class Meeseeks {
     } else {
       const hop = moving ? Math.abs(Math.sin(this._t * (this.huge ? 9 : 13))) * 0.2 * this.sc : Math.abs(Math.sin(this._t * 3)) * 0.06 * this.sc;
       this.group.position.set(this.pos.x, gy + hop, this.pos.z);
+    }
+    if (this._hand && this._gun) { // snap the held weapon to the hand bone, pointing forward (+Z = facing dir)
+      this._hand.updateWorldMatrix(true, false); this._hand.getWorldPosition(this._tmp); this.group.worldToLocal(this._tmp);
+      this._gun.position.copy(this._tmp); this._gun.position.z += 0.15 * this.sc; this._gun.rotation.set(0, 0, 0);
     }
   }
 

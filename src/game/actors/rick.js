@@ -24,22 +24,22 @@ export function makeRick() {
     buildProcedural(group, (l, r, al, ar) => { legL = l; legR = r; armL = al; armR = ar; });
   }
 
-  // held weapon — parented to the hand bone when rigged (moves with the animation), else to the body
-  const holder = hand || group;
-  const invScale = (RICK_MODEL._asset ? 1 / RICK_MODEL._asset.scale : 1);
+  // held weapon — parented to the GROUP (native scale) and each frame snapped to the hand bone's position
+  // while pointing forward (+Z = the way Rick faces/aims). Falls back to a fixed side position if unrigged.
+  const _tmp = new THREE.Vector3();
   let gun = null, gunKind = null;
   const setWeapon = (mode) => {
     const k = gunKindForMode(mode); if (k === gunKind) return; gunKind = k;
-    if (gun) holder.remove(gun);
-    gun = makeHeldGun(k);
-    holder.add(gun);
-    if (hand) { // size the gun to the bone's real world scale so it's ~0.55m regardless of rig scale; aim it down the arm
-      hand.updateWorldMatrix(true, false);
-      const ws = new THREE.Vector3(); hand.getWorldScale(ws); const kk = 0.55 / (ws.x || 1);
-      gun.scale.setScalar(kk); gun.position.set(0, 0, 0); gun.rotation.set(Math.PI / 2, 0, 0);
-    } else { gun.scale.setScalar(1); gun.position.set(0.34, 1.16, 0.34); gun.rotation.set(0, 0, 0); }
+    if (gun) group.remove(gun);
+    gun = makeHeldGun(k); gun.scale.setScalar(1); group.add(gun);
+    if (!hand) gun.position.set(0.34, 1.16, 0.34);
   };
   setWeapon("sword");
+  const trackGun = () => {
+    if (!hand || !gun) return;
+    hand.updateWorldMatrix(true, false); hand.getWorldPosition(_tmp); group.worldToLocal(_tmp);
+    gun.position.copy(_tmp); gun.position.z += 0.15; gun.rotation.set(0, 0, 0); // sit slightly forward, barrel pointing ahead
+  };
 
   let phase = 0, walkW = 0;
   return {
@@ -55,6 +55,7 @@ export function makeRick() {
         if (moving) { legL.rotation.x = sw * 0.7; legR.rotation.x = -sw * 0.7; armL.rotation.x = -sw * 0.6; armR.rotation.x = sw * 0.6; }
         else { legL.rotation.x *= 0.85; legR.rotation.x *= 0.85; }
       }
+      trackGun(); // keep the weapon in-hand + pointing forward
     },
   };
 }
