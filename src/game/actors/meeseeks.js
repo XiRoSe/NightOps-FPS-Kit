@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { MEESEEKS_MODEL, MEESEEKS_DEAD, RM_HAND_BONE, clipsOf } from "./rickmorty-assets.js";
+import { MEESEEKS_MODEL, RM_HAND_BONE } from "./rickmorty-assets.js";
 import { makeHeldGun } from "./heldguns.js";
 
 // MR. MEESEEKS enemy — now SKELETALLY ANIMATED (Mesh2Motion rig). Walk_Loop plays while chasing; the held

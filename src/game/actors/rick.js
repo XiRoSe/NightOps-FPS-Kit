@@ -49,7 +49,7 @@ export function makeRick() {
   // with layered additive thruster flames (blue-white core → yellow → orange tail) that flicker while flying.
   const jetpack = new THREE.Group(); jetpack.position.set(0, 1.34, -0.26); group.add(jetpack);
   const JM = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, metalness: 0.6, roughness: 0.4, flatShading: true, ...o });
-  jetpack.add(Object.assign(new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.34, 6, 10), JM(0x3a3f47)), { position: new THREE.Vector3(0, 0, 0.05) })); // slim central spine
+  const spine = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.34, 6, 10), JM(0x3a3f47)); spine.position.set(0, 0, 0.05); jetpack.add(spine); // slim central spine
   for (const sx of [-0.13, 0.13]) {                            // two rounded fuel tanks + red caps + nozzles
     const tank = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.32, 6, 12), JM(0x59636f)); tank.position.set(sx, 0, 0); jetpack.add(tank);
     const cap = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8), JM(0xb0432a)); cap.position.set(sx, 0.26, 0); jetpack.add(cap);

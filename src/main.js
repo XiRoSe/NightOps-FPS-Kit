@@ -12,7 +12,7 @@ import { TouchControls } from "./engine/touch.js";
 import { LaserSight } from "./engine/laser-sight.js";
 import { trackStart, trackEnd } from "./engine/analytics.js";
 import { makeRick } from "./game/actors/rick.js";
-import { preloadRickMorty } from "./game/actors/rickmorty-assets.js";
+import { rickMortyJobs } from "./game/actors/rickmorty-assets.js";
 import { LevelBuilder } from "./kit/level-builder.js";
 import { Destructibles } from "./kit/destructibles.js";
 // game — this game's content + rules
@@ -137,7 +137,7 @@ class Game {
     // load models progressively (async, off the main thread) with a progress readout
     const jobs = [preloadEnemies(), preloadHeli(), preloadOperator(), preloadVehicles(), preloadPickups(), preloadWeapons(), preloadCreatures(), preloadNature(), preloadFpWeapons(), preloadBuildings(),
       this.audio.clipsReady || Promise.resolve()]; // also wait for all audio (incl. the Pacific Rim + Alien Boy tracks) so music is ready the moment the mission begins
-    if (this.cfg.view === "third") jobs.push(preloadRickMorty()); // Rick + Meeseeks GLBs (if dropped into public/models/; 404s fall back to procedural)
+    if (this.cfg.view === "third") jobs.push(...rickMortyJobs()); // Rick + Meeseeks GLBs as separate jobs (bar advances per-file)
     let done = 0; this.hud.setLoadingProgress(0, jobs.length + 1);
     jobs.forEach((p) => p.then(() => this.hud.setLoadingProgress(++done, jobs.length + 1)));
     await Promise.all(jobs);
