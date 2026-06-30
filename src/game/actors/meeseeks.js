@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { MEESEEKS_MODEL, RM_HAND_BONE } from "./rickmorty-assets.js";
 import { makeHeldGun } from "./heldguns.js";
+import { makeGunModel } from "./gunmodels.js";
 
 // MR. MEESEEKS enemy — now SKELETALLY ANIMATED (Mesh2Motion rig). Walk_Loop plays while chasing; the held
 // weapon (gun/rocket variants) is parented to the right-hand bone so it's properly held + follows the walk
@@ -36,8 +37,9 @@ export class Meeseeks {
     } else { this._buildProcedural(); }
 
     if (this.weapon !== "melee") {                              // held weapon: parented to the group (native scale),
-      this._gun = makeHeldGun(this.weapon === "rocket" ? "rocket" : "rifle"); // snapped to the hand bone + pointing forward each frame
-      this._gun.scale.setScalar(this.huge ? 1.5 : 1.0); this.group.add(this._gun); this._tmp = new THREE.Vector3();
+      const wk = this.weapon === "rocket" ? "rocket" : "gun";  // real CC0 model when loaded, else procedural
+      this._gun = makeGunModel(wk) || makeHeldGun(wk === "gun" ? "rifle" : wk);
+      this._gun.scale.setScalar(this.huge ? 2.4 : 1.0); this.group.add(this._gun); this._tmp = new THREE.Vector3();
       if (!this._hand) this._gun.position.set(0.42 * this.sc, 1.15 * this.sc, 0.32 * this.sc);
     }
 

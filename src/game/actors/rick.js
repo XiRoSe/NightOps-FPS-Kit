@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { RICK_MODEL, RICK_SHOOT, RM_HAND_BONE, clipsOf } from "./rickmorty-assets.js";
 import { makeHeldGun, gunKindForMode } from "./heldguns.js";
+import { makeGunModel } from "./gunmodels.js";
 
 // 3rd-person RICK avatar. Now SKELETALLY ANIMATED (Mesh2Motion rig): Walk_Loop plays while moving, the
 // held weapon is parented to the right-hand bone so it follows the hands, and Pistol_Shoot fires on demand.
@@ -36,7 +37,7 @@ export function makeRick() {
   const setWeapon = (mode) => {
     const k = gunKindForMode(mode); if (k === gunKind) return; gunKind = k;
     if (gun) group.remove(gun);
-    gun = makeHeldGun(k); gun.scale.setScalar(1); group.add(gun);
+    gun = makeGunModel(k) || makeHeldGun(k); group.add(gun); // real CC0 model when loaded, else procedural
     if (!hand) gun.position.set(0.34, 1.16, 0.34);
   };
   setWeapon("sword");
