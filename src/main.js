@@ -147,7 +147,7 @@ class Game {
     this.levelDef.build(this.level);
     const sp = this.level.playerSpawn;
     // 3rd-person mode (e.g. the Rick & Morty level): a visible player avatar the camera orbits behind
-    if (this.cfg.view === "third") { this.playerModel = makeRick(); this.scene.add(this.playerModel.group); this._thirdPerson = true; this.controller.view = "third"; }
+    if (this.cfg.view === "third") { this.playerModel = makeRick(); this.scene.add(this.playerModel.group); this._thirdPerson = true; this.controller.view = "third"; this.weapon._hideViewmodel = true; }
     this.hero = "heavy";
     this._heroLobby = HERO_LOADOUT[this.hero] != null && this.cfg.intro && (this.cfg.intro.style === "parachute" || this.cfg.intro.style === "droppod");
     if (this._heroLobby) this._setupLobby(); // hero-select lobby on the start screen
@@ -413,7 +413,19 @@ class Game {
     this.playerModel.group.rotation.y = Math.atan2(fwd.x, fwd.z); // face the look dir (we see Rick's back)
     this.playerModel.update(dt, c.moving && c.onGround, this.input.isDown("shift") ? 2 : 1); // sprint → 2x (8x anim)
     if (this.input.mouseDown && this.weapon.mode !== "sword") this.playerModel.fireKick(); // recoil while shooting
-    for (const g of [this.weapon.group, this.weapon.launcher, this.weapon.energy, this.weapon.laserGun, this.weapon.shotgunGun, this.weapon.sword]) if (g) g.visible = false;
+  }
+
+  // start-screen hero pose for the Rick level: Rick stands in view holding a bazooka, slowly turning
+  _rickMenuPose(dt, t) {
+    const pm = this.playerModel, sp = this.level.playerSpawn;
+    const gy = this.level.terrainHeight ? this.level.terrainHeight(sp.x, sp.z) : 0;
+    pm.setWeapon("launcher");                                   // bazooka in hand
+    pm.group.position.set(sp.x, gy, sp.z);
+    pm.group.rotation.y = 0.85 + Math.sin(t * 0.25) * 0.3;     // 3/4 to camera, gentle turntable
+    pm.update(dt, false, 1);                                    // idle + gun snaps to the hand
+    this.camera.position.set(sp.x + 2.4, gy + 1.65, sp.z + 3.1);
+    this.camera.lookAt(sp.x - 0.1, gy + 1.2, sp.z);
+    if (Math.abs(this.camera.fov - 42) > 0.01) { this.camera.fov = 42; this.camera.updateProjectionMatrix(); }
   }
 
   // a ranged enemy (e.g. a gun/rocket Meeseeks) fires at the player. o = { from:{x,y,z}, to:{x,y,z}, kind, dmg }
@@ -595,7 +607,7 @@ class Game {
     if (this.cfg.reinforce === "meeseeks") { // Rick level: drops are Meeseeks — mostly regular, some huge, mixed weapons
       delete spec.hp; delete spec.speed; spec.kind = "meeseeks";
       if (Math.random() < 0.15) spec.huge = true;
-      const w = Math.random(); spec.weapon = w < 0.18 ? "rocket" : w < 0.55 ? "gun" : "melee";
+      spec.weapon = Math.random() < 0.3 ? "rocket" : "gun"; // every Meeseeks armed (gun or rocket, no melee)
     }
     const a = Math.random() * 6.28, r = Math.random() * 26;
     spec.x = s.c[0] + Math.cos(a) * r; spec.z = s.c[1] + Math.sin(a) * r;
@@ -726,6 +738,7 @@ class Game {
     this.engine.skyStorm && this.engine.skyStorm(dt); // purple-storm lightning
     this.level.update(t); // wave the objective flag
     this.laser.hide(); // re-shown each frame during play
+    if (this.state === "start" && this.cfg.view === "third" && this.playerModel) { this._rickMenuPose(dt, t); return; } // 3rd-person start screen: Rick posing with a bazooka
     if (this.state === "intro") {
       this.intro.update(dt);
       this.combat.update(dt, t, this._introFar); // enemies patrol/idle normally, never detect the player yet

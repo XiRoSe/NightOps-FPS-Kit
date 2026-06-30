@@ -10,7 +10,7 @@ export class Meeseeks {
   constructor(scene, spawn, level) {
     this.scene = scene; this.level = level; this.kind = "meeseeks";
     this.huge = !!spawn.huge;
-    this.weapon = spawn.weapon || "melee";
+    this.weapon = spawn.weapon === "melee" ? "gun" : (spawn.weapon || "gun"); // every Meeseeks is armed (no melee)
     this.pos = new THREE.Vector3(spawn.x, 0, spawn.z);
     this.hp = spawn.hp || (this.huge ? 170 : 45);
     this.speed = spawn.speed || (this.huge ? 4.2 + Math.random() : 6.5 + Math.random() * 1.5);

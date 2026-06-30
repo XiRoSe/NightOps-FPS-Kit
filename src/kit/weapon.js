@@ -217,6 +217,7 @@ export class Weapon {
     const tip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8), em); tip.position.set(0, 0.03, -0.88); g.add(tip);
   }
   _showViewmodel() {
+    if (this._hideViewmodel) { for (const x of [this.group, this.launcher, this.energy, this.laserGun, this.shotgunGun, this.sword, this.extraGun]) if (x) x.visible = false; return; } // 3rd-person: never show the FP viewmodel
     const g = this.guns[this.mode];
     this.group.visible = this.mode === "rifle";
     this.launcher.visible = this.mode === "launcher";
