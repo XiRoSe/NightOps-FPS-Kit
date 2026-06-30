@@ -147,6 +147,7 @@ export class Weapon {
   }
 
   get muzzleWorld() {
+    if (this._muzzleOverride) { const m = this._muzzleOverride(); if (m) return m; } // 3rd-person: fire from the visible character's gun
     this.muzzle.getWorldPosition(this._muzzleWorld);
     return this._muzzleWorld;
   }

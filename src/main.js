@@ -147,7 +147,7 @@ class Game {
     this.levelDef.build(this.level);
     const sp = this.level.playerSpawn;
     // 3rd-person mode (e.g. the Rick & Morty level): a visible player avatar the camera orbits behind
-    if (this.cfg.view === "third") { this.playerModel = makeRick(); this.scene.add(this.playerModel.group); this._thirdPerson = true; this.controller.view = "third"; this.weapon._hideViewmodel = true; }
+    if (this.cfg.view === "third") { this.playerModel = makeRick(); this.scene.add(this.playerModel.group); this._thirdPerson = true; this.controller.view = "third"; this.weapon._hideViewmodel = true; this.weapon._muzzleOverride = () => this.playerModel && this.playerModel.getMuzzle(); this.weapon._showViewmodel(); }
     this.hero = "heavy";
     this._heroLobby = HERO_LOADOUT[this.hero] != null && this.cfg.intro && (this.cfg.intro.style === "parachute" || this.cfg.intro.style === "droppod");
     if (this._heroLobby) this._setupLobby(); // hero-select lobby on the start screen
@@ -289,6 +289,7 @@ class Game {
       const loadout = this.cfg.player.startLoadout;
       if (loadout) { this.weapon.owned = loadout.slice(); this.weapon.mode = loadout[0]; }
       else { this.weapon.mode = "rifle"; } // military default; this.weapon.owned already = [rifle, sword, launcher]
+      if (this.cfg.player.lowAmmo) { for (const m of this.weapon.owned) { const a = this.weapon.A[m]; if (a) { a.mag = Math.max(1, Math.ceil(a.size * 0.34)); a.reserve = 0; } } this.weapon.rockets = 1; } // start nearly dry → scavenge ammo around town
       this.weapon._showViewmodel();
       this.hud.setWeaponName(this._weaponName(this.weapon.mode));
     }
@@ -421,10 +422,10 @@ class Game {
     const gy = this.level.terrainHeight ? this.level.terrainHeight(sp.x, sp.z) : 0;
     pm.setWeapon("launcher");                                   // bazooka in hand
     pm.group.position.set(sp.x, gy, sp.z);
-    pm.group.rotation.y = 0.85 + Math.sin(t * 0.25) * 0.3;     // 3/4 to camera, gentle turntable
-    pm.update(dt, false, 1);                                    // idle + gun snaps to the hand
-    this.camera.position.set(sp.x + 2.4, gy + 1.65, sp.z + 3.1);
-    this.camera.lookAt(sp.x - 0.1, gy + 1.2, sp.z);
+    pm.group.rotation.y = t * 0.6;                              // slow turntable spin — show Rick + the bazooka from every side
+    pm.update(dt, false, 1);                                    // idle "weapon up" stance + gun snaps to the hand
+    this.camera.position.set(sp.x, gy + 1.6, sp.z + 3.6);      // centered in front (not off to the side)
+    this.camera.lookAt(sp.x, gy + 1.15, sp.z);
     if (Math.abs(this.camera.fov - 42) > 0.01) { this.camera.fov = 42; this.camera.updateProjectionMatrix(); }
   }
 
@@ -723,6 +724,7 @@ class Game {
 
   _updateLaser() {
     if (!this.combat) return;
+    if (this._thirdPerson) { this.laser.hide(); return; } // no FP laser sight in 3rd-person
     if (this.weapon.mode !== "rifle" || this.weapon.reloading) { this.laser.hide(); return; } // laser sight only on the rifle
     const tg = this._laserTargets; tg.length = 0;
     for (const m of this.level.solidMeshes) tg.push(m);

@@ -12,7 +12,8 @@ export const meeseeks = {
     intro: { enabled: false },                                  // straight into play (no drop-pod cinematic)
     objective: { type: "collect", count: 12 },                  // recover the 12 arcs, same as ARCFALL
     helicopter: { spawnDelay: 99999 },
-    player: { grenades: 4, startLoadout: ["sword"] },           // existing weapons: Arc Blade start, scavenge the rest
+    // Rick starts with the WHOLE arsenal (Q to cycle) but almost no ammo — scavenge ammo around town
+    player: { grenades: 4, startLoadout: ["rifle", "smg", "minigun", "burst", "railgun", "flak", "laser", "plasma", "launcher"], lowAmmo: true },
     reinforce: "meeseeks",                                      // the sky-drop reinforcements are Meeseeks (mostly regular, some huge)
     messages: { deployHint: "CLICK TO DEPLOY — recover the arcs, survive the Meeseeks", hostileDown: "MEESEEKS POOFED" },
   },

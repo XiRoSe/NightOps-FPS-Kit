@@ -7,7 +7,7 @@ import { makeHeldGun, gunKindForMode } from "./heldguns.js";
 // Falls back to a procedural homage if the rigged GLB isn't present. Returns { group, update, setWeapon, fireKick }.
 export function makeRick() {
   const group = new THREE.Group();
-  let mixer = null, walk = null, shoot = null, hand = null, glb = false;
+  let mixer = null, walk = null, shoot = null, aim = null, hand = null, glb = false;
   let legL, legR, armL, armR; // procedural fallback handles
 
   if (RICK_MODEL.ready) {
@@ -16,7 +16,11 @@ export function makeRick() {
     mixer = new THREE.AnimationMixer(inst.model);
     for (const c of inst.animations) if (/walk/i.test(c.name)) walk = mixer.clipAction(c);
     const sc = clipsOf(RICK_SHOOT).find((c) => /shoot|pistol/i.test(c.name));
-    if (sc) shoot = mixer.clipAction(sc);
+    if (sc) {
+      shoot = mixer.clipAction(sc);
+      const aimClip = sc.clone(); aim = mixer.clipAction(aimClip);     // a frozen frame of the shoot pose = a "weapon up, ready" idle stance
+      aim.play(); aim.paused = true; aim.time = sc.duration * 0.5; aim.setEffectiveWeight(0);
+    }
     hand = inst.bones.rightHand;
     if (walk) { walk.play(); walk.setEffectiveWeight(0); }
     glb = true;
@@ -42,14 +46,23 @@ export function makeRick() {
   };
 
   let phase = 0, walkW = 0;
+  const _muzzleV = new THREE.Vector3();
   return {
     group, setWeapon,
-    fireKick() { if (shoot) { shoot.reset(); shoot.setLoop(THREE.LoopOnce, 1); shoot.clampWhenFinished = true; shoot.setEffectiveWeight(0.9).play(); } },
+    getMuzzle() { if (!gun) return null; gun.updateWorldMatrix(true, false); return gun.localToWorld(_muzzleV.set(0, 0, 0.7)); }, // barrel tip in world space
+
+    fireKick() { // re-trigger the shoot anim only once the previous shot has played out (semi-auto feel, no stutter)
+      if (shoot && (!shoot.isRunning() || shoot.time >= shoot.getClip().duration - 0.02)) {
+        shoot.reset(); shoot.setLoop(THREE.LoopOnce, 1); shoot.clampWhenFinished = true; shoot.setEffectiveWeight(1).play();
+      }
+    },
     update(dt, moving, speed = 1) {
       if (mixer) {
         mixer.update(dt);
         walkW += ((moving ? 1 : 0) - walkW) * Math.min(1, dt * 10); // crossfade walk in/out by movement
         if (walk) { walk.setEffectiveWeight(walkW); walk.setEffectiveTimeScale(4 * speed); } // 4x → reads as a run
+        const firing = shoot && shoot.isRunning() && shoot.time < shoot.getClip().duration - 0.02;
+        if (aim) aim.setEffectiveWeight(firing ? 0 : 1 - walkW); // idle → weapon-up ready stance (not hands-down); moving → walk; firing → shoot
       } else if (legL) { // procedural fallback walk
         phase += dt * (moving ? 8.5 * speed : 2); const sw = Math.sin(phase);
         if (moving) { legL.rotation.x = sw * 0.7; legR.rotation.x = -sw * 0.7; armL.rotation.x = -sw * 0.6; armR.rotation.x = sw * 0.6; }
