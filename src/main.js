@@ -147,9 +147,9 @@ class Game {
     this.levelDef.build(this.level);
     const sp = this.level.playerSpawn;
     // 3rd-person mode (e.g. the Rick & Morty level): a visible player avatar the camera orbits behind
-    if (this.cfg.view === "third") { this.playerModel = makeRick(); this.scene.add(this.playerModel.group); this._thirdPerson = true; this.controller.view = "third"; this.weapon._hideViewmodel = true; this.weapon._muzzleOverride = () => this.playerModel && this.playerModel.getMuzzle(); this.weapon._showViewmodel(); }
+    if (this.cfg.view === "third") { this.playerModel = makeRick(); this.scene.add(this.playerModel.group); this._thirdPerson = true; this.controller.view = "third"; this.weapon._hideViewmodel = true; this.weapon._muzzleOverride = () => this.playerModel && this.playerModel.getMuzzle(); this.weapon._showViewmodel(); this.controller.thirdDist /= 1.5; /* 1.5x closer to Rick's back */ this.playerModel.group.visible = false; /* shown on the deploy screen + in play, hidden during the drop */ }
     this.hero = "heavy";
-    this._heroLobby = HERO_LOADOUT[this.hero] != null && this.cfg.intro && (this.cfg.intro.style === "parachute" || this.cfg.intro.style === "droppod");
+    this._heroLobby = HERO_LOADOUT[this.hero] != null && this.cfg.intro && (this.cfg.intro.style === "parachute" || this.cfg.intro.style === "droppod") && this.cfg.view !== "third"; // 3rd-person levels (Rick) skip hero-select — you're always Rick
     if (this._heroLobby) this._setupLobby(); // hero-select lobby on the start screen
     else this.camera.position.set(sp.x, this.controller.eye, sp.z);
     // A persistent gunship searchlight, added to the scene ONCE (intensity 0 when idle). The heli
@@ -268,11 +268,12 @@ class Game {
     this._introDone = true;
     if (this.intro) { this.intro.dispose(); this.intro = null; }
     this.audio.stopRotor();
-    this.weapon.group.visible = true;
+    if (!this.weapon._hideViewmodel) this.weapon.group.visible = true; // 3rd-person keeps the FP viewmodel hidden
     // settle the player at the spawn, facing into the compound
     this.camera.position.set(this.level.playerSpawn.x, this.controller.eye, this.level.playerSpawn.z);
     this.controller._euler.set(0, 0, 0);
     this.camera.quaternion.setFromEuler(this.controller._euler);
+    if (this._thirdPerson) { const sp = this.level.playerSpawn; this.controller.pos.set(sp.x, 0, sp.z); this.controller.feetY = this.level.terrainHeight ? this.level.terrainHeight(sp.x, sp.z) : 0; } // Rick stands up exactly where the pod landed
     this._startPlay();
   }
   _resume() {
@@ -409,6 +410,7 @@ class Game {
     const c = this.controller;
     const fwd = this._tpFwd || (this._tpFwd = new THREE.Vector3());
     this.camera.getWorldDirection(fwd);
+    this.playerModel.group.visible = true;                        // visible once we've landed and are playing
     this.playerModel.setWeapon(this.weapon.mode);                 // Rick holds the weapon he's actually using
     this.playerModel.group.position.set(c.pos.x, c.feetY, c.pos.z);
     this.playerModel.group.rotation.y = Math.atan2(fwd.x, fwd.z); // face the look dir (we see Rick's back)
@@ -420,6 +422,7 @@ class Game {
   _rickMenuPose(dt, t) {
     const pm = this.playerModel, sp = this.level.playerSpawn;
     const gy = this.level.terrainHeight ? this.level.terrainHeight(sp.x, sp.z) : 0;
+    pm.group.visible = true;                                    // shown on the deploy screen (hidden during the drop)
     pm.setWeapon("launcher");                                   // bazooka in hand
     pm.group.position.set(sp.x, gy, sp.z);
     pm.group.rotation.y = Math.sin(t * 0.5) * (Math.PI / 6);   // sway ±30° (60° front arc) facing the camera
@@ -742,6 +745,7 @@ class Game {
     this.laser.hide(); // re-shown each frame during play
     if (this.state === "start" && this.cfg.view === "third" && this.playerModel) { this._rickMenuPose(dt, t); return; } // 3rd-person start screen: Rick posing with a bazooka
     if (this.state === "intro") {
+      if (this._thirdPerson && this.playerModel) this.playerModel.group.visible = false; // hidden while the drop-pod falls (FP descent)
       this.intro.update(dt);
       this.combat.update(dt, t, this._introFar); // enemies patrol/idle normally, never detect the player yet
       this._introT += dt;

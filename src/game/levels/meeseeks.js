@@ -9,11 +9,11 @@ export const meeseeks = {
   config: {
     view: "third",                                              // 3rd-person: you see Rick + his gun
     scene: { sky: "day", fog: { color: 0x9a7fb0, near: 240, far: 1300 }, fov: 75 },
-    intro: { enabled: false },                                  // straight into play (no drop-pod cinematic)
+    intro: { enabled: true, style: "droppod", spottedCalloutAt: 4.5 }, // same sky-fall drop-pod cinematic + story as the original ARCFALL
     objective: { type: "collect", count: 12 },                  // recover the 12 arcs, same as ARCFALL
     helicopter: { spawnDelay: 99999 },
-    // Rick starts with the WHOLE arsenal (Q to cycle) but almost no ammo — scavenge ammo around town
-    player: { grenades: 4, startLoadout: ["rifle", "smg", "minigun", "burst", "railgun", "flak", "laser", "plasma", "launcher"], lowAmmo: true },
+    // Rick starts with the WHOLE arsenal (Q to cycle) at full ammo; extra ammo caches dot the island to top up
+    player: { grenades: 4, startLoadout: ["rifle", "smg", "minigun", "burst", "railgun", "flak", "laser", "plasma", "launcher"] },
     reinforce: "meeseeks",                                      // the sky-drop reinforcements are Meeseeks (mostly regular, some huge)
     messages: { deployHint: "CLICK TO DEPLOY — recover the arcs, survive the Meeseeks", hostileDown: "MEESEEKS POOFED" },
   },
@@ -25,5 +25,7 @@ export const meeseeks = {
                    [36, 110, "gun"], [-44, 106, "rocket"], [16, 108, "gun"], [-6, 112, "gun"]];
     for (const [x, z, weapon] of party) b.enemy({ kind: "meeseeks", x, z, weapon });
     for (const [x, z, weapon] of [[26, 90, "rocket"], [-26, 88, "gun"]]) b.enemy({ kind: "meeseeks", huge: true, x, z, weapon });
+    // extra ammo caches dotted across the island (Rick burns through the arsenal fast)
+    for (const [x, z] of [[0, 60], [-50, 4], [50, 6], [-30, -40], [42, -42], [-80, 34], [82, 30], [4, -72], [-110, -8], [122, 22], [-22, 130], [62, 112], [102, -50], [-92, 82], [18, 14], [-58, -64]]) b.giftCrate(x, z, "ammo");
   },
 };
