@@ -26,7 +26,7 @@ export function makeGunModel(mode) {
   if (!src) return null;
   const inst = src.clone(true);
   const box = new THREE.Box3().setFromObject(inst); const size = new THREE.Vector3(); box.getSize(size); const center = new THREE.Vector3(); box.getCenter(center);
-  const scale = 0.62 / (size.z || 1);                       // normalise to a ~0.62m-long held weapon
+  const scale = 0.82 / (size.z || 1);                       // normalise to a ~0.82m-long held weapon (chunky, reads well in 3rd person)
   inst.position.sub(center);                                 // recenter on origin
   const g = new THREE.Group(); g.add(inst); g.scale.setScalar(scale);
   g.position.z = size.z * scale * 0.28;                      // shift forward so the grip is near the hand, barrel ahead

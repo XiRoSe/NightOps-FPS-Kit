@@ -214,13 +214,13 @@ export class VFX {
   dustBurst(point) { this._dustPuff(point, 0x9a8a62, 0.7); }
 
   // a proper energy LASER: a thick glowing cyan beam (lingering cylinder) + a hot white core + end flashes
-  laserBeam(a, b) {
+  laserBeam(a, b, color = 0x34ffd6) {
     this._dir.subVectors(b, a); const len = this._dir.length(); if (len < 0.1) return;
     const beam = this._next(this.enemyBeams);
     beam.mesh.position.copy(a); beam.mesh.quaternion.setFromUnitVectors(this._up, this._dir.normalize()); beam.mesh.scale.set(1.8, len, 1.8);
-    beam.mesh.material.color.setHex(0x34ffd6); beam.mesh.visible = true; beam.mesh.material.opacity = 0.9; beam.life = beam.max = 0.12;
+    beam.mesh.material.color.setHex(color); beam.mesh.visible = true; beam.mesh.material.opacity = 0.9; beam.life = beam.max = 0.12;
     this.tracer(a, b); // bright white-hot core down the centre
-    this._flash(a, 0.4, 0xaaffe6); this._flash(b, 0.75, 0x34ffd6);
+    this._flash(a, 0.4, 0xffffff); this._flash(b, 0.75, color);
   }
 
   // sci-fi plasma detonation: a blue/cyan energy fireball + shockwave + sparks

@@ -72,7 +72,7 @@ export class Combat {
         if (obj.userData && obj.userData.vehicle) { vehicle = obj.userData.vehicle; break; }
         obj = obj.parent;
       }
-      this.vfx.tracer(muzzle, h.point);
+      if (this.weapon._energyBeam) this.vfx.laserBeam(muzzle, h.point); else this.vfx.tracer(muzzle, h.point); // energy bolt in 3rd-person sci-fi mode
       if (enemy && !enemy.dead) {
         const fall = Math.max(0.4, 1 - Math.max(0, h.distance - 28) / 150); // less hit power at range
         enemy.takeDamage(this.weapon.damage * fall);
@@ -94,7 +94,7 @@ export class Combat {
       }
     } else {
       this._far.copy(this._origin).addScaledVector(this._dir, 120);
-      this.vfx.tracer(muzzle, this._far);
+      if (this.weapon._energyBeam) this.vfx.laserBeam(muzzle, this._far); else this.vfx.tracer(muzzle, this._far);
     }
   }
 

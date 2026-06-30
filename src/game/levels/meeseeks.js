@@ -14,6 +14,8 @@ export const meeseeks = {
     helicopter: { spawnDelay: 99999 },
     // Rick's arsenal (Q to cycle) at full ammo — no SMG / portal-gun (laser) / railgun; extra ammo caches dot the island
     player: { grenades: 4, startLoadout: ["rifle", "minigun", "burst", "plasma", "launcher"], bannedWeapons: ["smg", "laser", "railgun", "flak"] },
+    // sci-fi blaster names (they fire energy/laser bolts)
+    weaponNames: { rifle: "PHOTON CARBINE", minigun: "TACHYON REPEATER", burst: "ION BURSTER", plasma: "PLASMA CANNON", launcher: "FUSION LAUNCHER" },
     reinforce: "meeseeks",                                      // the sky-drop reinforcements are Meeseeks (mostly regular, some huge)
     messages: { deployHint: "CLICK TO DEPLOY — recover the arcs, survive the Meeseeks", hostileDown: "MEESEEKS POOFED" },
   },

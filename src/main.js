@@ -147,7 +147,7 @@ class Game {
     this.levelDef.build(this.level);
     const sp = this.level.playerSpawn;
     // 3rd-person mode (e.g. the Rick & Morty level): a visible player avatar the camera orbits behind
-    if (this.cfg.view === "third") { this.playerModel = makeRick(); this.scene.add(this.playerModel.group); this._thirdPerson = true; this.controller.view = "third"; this.weapon._hideViewmodel = true; this.weapon._muzzleOverride = () => this.playerModel && this.playerModel.getMuzzle(); this.weapon._showViewmodel(); this.controller.thirdDist /= 1.5; /* 1.5x closer to Rick's back */ this.playerModel.group.visible = false; /* shown on the deploy screen + in play, hidden during the drop */ }
+    if (this.cfg.view === "third") { this.playerModel = makeRick(); this.scene.add(this.playerModel.group); this._thirdPerson = true; this.controller.view = "third"; this.weapon._hideViewmodel = true; this.weapon._muzzleOverride = () => this.playerModel && this.playerModel.getMuzzle(); this.weapon._showViewmodel(); this.weapon._energyBeam = true; /* sci-fi blasters fire energy/laser bolts */ this.controller.thirdDist /= 1.5; /* 1.5x closer to Rick's back */ this.playerModel.group.visible = false; /* shown on the deploy screen + in play, hidden during the drop */ }
     this.hero = "heavy";
     this._heroLobby = HERO_LOADOUT[this.hero] != null && this.cfg.intro && (this.cfg.intro.style === "parachute" || this.cfg.intro.style === "droppod") && this.cfg.view !== "third"; // 3rd-person levels (Rick) skip hero-select — you're always Rick
     if (this._heroLobby) this._setupLobby(); // hero-select lobby on the start screen
@@ -392,6 +392,7 @@ class Game {
   }
 
   _weaponName(mode) {
+    if (this.cfg.weaponNames && this.cfg.weaponNames[mode]) return this.cfg.weaponNames[mode]; // per-level sci-fi names
     return { rifle: "MK-4 CARBINE", smg: "SMG", minigun: "MINIGUN", burst: "BURST RIFLE", railgun: "RAILGUN", sword: "ARC BLADE", shotgun: "PULSE SHOTGUN", flak: "FLAK CANNON", launcher: "MISSILE LAUNCHER", plasma: "PLASMA CANNON", laser: "PORTAL GUN" }[mode] || "MK-4 CARBINE";
   }
 
@@ -524,7 +525,7 @@ class Game {
         if (r) { end = r.point.clone(); if (r.enemy) { r.enemy.takeDamage(this._falloff(g.dmg, r.dist)); this.vfx.hitPuff(end); } }
       }
       if (g.pierce) { this.vfx.enemyLaser ? this.vfx.enemyLaser(start, end, g.beam) : this.vfx.tracer(start, end); this.vfx._flash && this.vfx._flash(end, 1.4, g.beam); this.vfx._flash && this.vfx._flash(start, 1.0, g.beam); } // railgun: a bold blue beam + flashes
-      else if (p === 0 || g.pellets <= 3) this.vfx.tracer(start, end);
+      else if (p === 0 || g.pellets <= 3) { if (this.weapon._energyBeam) this.vfx.laserBeam(start, end, g.ecolor || 0x66ff44); else this.vfx.tracer(start, end); }
     }
     this._fovKick = Math.min(this._fovKick + g.kick * 8, 6);
   }
