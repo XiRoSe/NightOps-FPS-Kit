@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { RICK_MODEL, RICK_SHOOT, RM_HAND_BONE, clipsOf } from "./rickmorty-assets.js";
+import { RICK_MODEL, RICK_WALK, RICK_SHOOT, RM_HAND_BONE, clipsOf } from "./rickmorty-assets.js";
 import { makeHeldGun, gunKindForMode } from "./heldguns.js";
 import { makeGunModel } from "./gunmodels.js";
 
@@ -16,7 +16,7 @@ export function makeRick() {
     const inst = RICK_MODEL.make({ rightHand: RM_HAND_BONE, spine: "spine_02", ua_l: "upperarm_l", ua_r: "upperarm_r", th_l: "thigh_l", th_r: "thigh_r" });
     group.add(inst.model);
     mixer = new THREE.AnimationMixer(inst.model);
-    for (const c of inst.animations) if (/walk/i.test(c.name)) walk = mixer.clipAction(c);
+    const wc = clipsOf(RICK_WALK).find((c) => /walk/i.test(c.name)); if (wc) walk = mixer.clipAction(wc); // retargets onto the UE4 rig by bone name
     const sc = clipsOf(RICK_SHOOT).find((c) => /shoot|pistol/i.test(c.name));
     if (sc) {
       shoot = mixer.clipAction(sc);
