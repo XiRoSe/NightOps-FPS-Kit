@@ -1,33 +1,25 @@
 import * as THREE from "three";
-import { RICK_MODEL, RICK_SHOOT, RM_HAND_BONE, clipsOf } from "./rickmorty-assets.js";
+import { RICK_MODEL, RICK_WALK, RICK_RUN, RICK_GUN, RM_HAND_BONE, clipsOf } from "./rickmorty-assets.js";
 import { makeHeldGun, gunKindForMode } from "./heldguns.js";
 import { makeGunModel } from "./gunmodels.js";
 
-// 3rd-person RICK avatar. Now SKELETALLY ANIMATED (Mesh2Motion rig): Walk_Loop plays while moving, the
-// held weapon is parented to the right-hand bone so it follows the hands, and Pistol_Shoot fires on demand.
-// Falls back to a procedural homage if the rigged GLB isn't present. Returns { group, update, setWeapon, fireKick }.
+// 3rd-person RICK avatar — a clean UE4-skeleton mesh driven by REAL Mixamo clips (Idle / Walk / Run / Gunplay)
+// authored for this exact mesh, so they fit natively: no retargeting, no procedural swing/lean hacks. The held
+// weapon rides the right-hand bone. Falls back to a procedural homage if the rig isn't present.
 export function makeRick() {
   const group = new THREE.Group();
-  let mixer = null, walk = null, shoot = null, aim = null, hand = null, spineBone = null, spineBase = null, glb = false;
+  let mixer = null, idle = null, walk = null, run = null, gunA = null, hand = null;
   let legL, legR, armL, armR; // procedural fallback handles
-  const rig = {}, rigBase = {}; // arm/leg bones + their rest quats, for swing amplification
 
   if (RICK_MODEL.ready) {
-    const inst = RICK_MODEL.make({ rightHand: RM_HAND_BONE, spine: "spine_02", ua_l: "upperarm_l", ua_r: "upperarm_r", th_l: "thigh_l", th_r: "thigh_r" });
+    const inst = RICK_MODEL.make({ rightHand: RM_HAND_BONE });
     group.add(inst.model);
     mixer = new THREE.AnimationMixer(inst.model);
-    for (const c of inst.animations) if (/walk/i.test(c.name)) walk = mixer.clipAction(c);
-    const sc = clipsOf(RICK_SHOOT).find((c) => /shoot|pistol/i.test(c.name));
-    if (sc) {
-      shoot = mixer.clipAction(sc);
-      const aimClip = sc.clone(); aim = mixer.clipAction(aimClip);     // a frozen frame of the shoot pose = a "weapon up, ready" idle stance
-      aim.play(); aim.paused = true; aim.time = sc.duration * 0.5; aim.setEffectiveWeight(0);
-    }
+    const act = (asset) => { const c = clipsOf(asset)[0]; return c ? mixer.clipAction(c) : null; };
+    idle = act(RICK_MODEL); walk = act(RICK_WALK); run = act(RICK_RUN); gunA = act(RICK_GUN); // Mixamo clips, one per file
     hand = inst.bones.rightHand;
-    spineBone = inst.bones.spine; if (spineBone) spineBase = spineBone.quaternion.clone(); // rest pose, for aim-pitch lean
-    for (const k of ["ua_l", "ua_r", "th_l", "th_r"]) { const b = inst.bones[k]; if (b) { rig[k] = b; rigBase[k] = b.quaternion.clone(); } } // arm/leg bones for swing amplification
-    if (walk) { walk.play(); walk.setEffectiveWeight(0); }
-    glb = true;
+    for (const a of [idle, walk, run, gunA]) if (a) { a.play(); a.setEffectiveWeight(0); }
+    if (idle) idle.setEffectiveWeight(1);
   } else {
     buildProcedural(group, (l, r, al, ar) => { legL = l; legR = r; armL = al; armR = ar; });
   }
@@ -63,37 +55,28 @@ export function makeRick() {
   const thruster = makeThruster();                             // additive particle plume from the two nozzles
   jetpack.add(thruster.points);
 
-  let phase = 0, walkW = 0, jetSway = 0, gunPitch = 0, runLean = 0;
-  const _muzzleV = new THREE.Vector3(), _spineQ = new THREE.Quaternion(), _xAxis = new THREE.Vector3(1, 0, 0), _swQ = new THREE.Quaternion(), _relQ = new THREE.Quaternion(), _euler = new THREE.Euler();
+  let phase = 0, mW = 0, sW = 0, fW = 0, fT = 0, jetSway = 0, gunPitch = 0;
+  const _muzzleV = new THREE.Vector3();
   return {
     group, setWeapon,
     getMuzzle() { if (!gun) return null; gun.updateWorldMatrix(true, false); return gun.localToWorld(_muzzleV.set(0, 0, 0.7)); }, // barrel tip in world space
-
-    fireKick() { // re-trigger the shoot anim only once the previous shot has played out (semi-auto feel, no stutter)
-      if (shoot && (!shoot.isRunning() || shoot.time >= shoot.getClip().duration - 0.02)) {
-        shoot.reset(); shoot.setLoop(THREE.LoopOnce, 1); shoot.clampWhenFinished = true; shoot.setEffectiveWeight(1).play();
-      }
-    },
+    fireKick() { fT = 0.3; }, // firing → blend in the Gunplay clip for a moment
     update(dt, moving, speed = 1, jetting = false, aimPitch = 0) {
-      gunPitch = aimPitch;                                       // barrel follows the vertical aim (so shots leave the muzzle correctly)
-      thruster.update(dt, jetting);                              // particle plume
-      jetSway += dt * (moving ? 16 * speed : 2.5);               // fast but SUBTLE side-to-side jiggle with the stride
+      gunPitch = aimPitch;                                       // barrel follows the vertical aim
+      thruster.update(dt, jetting);                              // jetpack particle plume
+      jetSway += dt * (moving ? 16 * speed : 2.5);
       jetpack.rotation.z = Math.sin(jetSway) * (moving ? 0.05 : 0.012);
       if (mixer) {
         mixer.update(dt);
-        walkW += ((moving ? 1 : 0) - walkW) * Math.min(1, dt * 10); // crossfade walk in/out by movement
-        if (walk) { walk.setEffectiveWeight(walkW); walk.setEffectiveTimeScale(4 * speed); } // cadence matches ground speed (no foot-slide); the forward lean sells the run
-        const firing = shoot && shoot.isRunning() && shoot.time < shoot.getClip().duration - 0.02;
-        if (shoot) shoot.setEffectiveWeight(firing ? 1 : 0); // release the shoot pose once the shot finishes — clamped weight was corrupting the walk loop
-        if (aim) aim.setEffectiveWeight(firing ? 0 : 1 - walkW); // idle → gun-up ready stance; moving → full walk (arms swing); firing → shoot
-        runLean += (((moving && speed > 1.5) ? 1 : 0) - runLean) * Math.min(1, dt * 8); // ease the sprint forward-lean in/out
-        if (spineBone) { const lean = Math.max(-0.95, Math.min(0.95, Math.max(-0.8, Math.min(0.8, aimPitch)) + runLean * 0.5)); _spineQ.setFromAxisAngle(_xAxis, lean); spineBone.quaternion.copy(spineBase).multiply(_spineQ); } // aim pitch + a runner's forward lean while sprinting
-        if (moving) {
-          const run = speed > 1.5;
-          for (const k of ["th_l", "th_r"]) if (rig[k]) { _swQ.copy(rig[k].quaternion); rig[k].quaternion.copy(rigBase[k]).slerp(_swQ, run ? 1.35 : 1.2); } // bigger leg stride
-          // arms: take the clip's forward/back swing (already opposite the legs) and amplify ONLY that axis, cleanly
-          for (const k of ["ua_l", "ua_r"]) if (rig[k]) { _relQ.copy(rigBase[k]).invert().multiply(rig[k].quaternion); _euler.setFromQuaternion(_relQ, "XYZ"); _swQ.setFromAxisAngle(_xAxis, _euler.x * (run ? 2.2 : 1.6)); rig[k].quaternion.copy(rigBase[k]).multiply(_swQ); }
-        }
+        fT = Math.max(0, fT - dt);
+        mW += ((moving ? 1 : 0) - mW) * Math.min(1, dt * 10);                     // idle↔move blend
+        sW += (((moving && speed > 1.5) ? 1 : 0) - sW) * Math.min(1, dt * 8);     // walk↔run blend
+        fW += (((fT > 0) ? 1 : 0) - fW) * Math.min(1, dt * 14);                   // gunplay blend
+        const g = 1 - fW;                                                          // locomotion dips under gunplay
+        if (idle) idle.setEffectiveWeight((1 - mW) * g);
+        if (walk) walk.setEffectiveWeight(mW * (1 - sW) * g);
+        if (run) run.setEffectiveWeight(mW * sW * g);
+        if (gunA) gunA.setEffectiveWeight(fW);
       } else if (legL) { // procedural fallback walk
         phase += dt * (moving ? 8.5 * speed : 2); const sw = Math.sin(phase);
         if (moving) { legL.rotation.x = sw * 0.7; legR.rotation.x = -sw * 0.7; armL.rotation.x = -sw * 0.6; armR.rotation.x = sw * 0.6; }

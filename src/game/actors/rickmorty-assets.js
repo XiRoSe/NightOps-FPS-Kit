@@ -1,17 +1,17 @@
 import { RiggedAsset } from "../../engine/assets.js";
 import { preloadGunModels } from "./gunmodels.js";
 
-// Rigged model pack for the Rick & Morty level (Mesh2Motion human skeleton, bone "hand_r" = right hand).
-//   Rick:     rick.glb (Walk_Loop mesh) + rick_shoot.glb (animation-ONLY: Pistol_Shoot — mesh stripped, ~19KB)
-//   Meeseeks: meeseeks.glb (Walk_Loop)
-// rick_shoot's clip retargets onto rick.glb's identical skeleton by bone name, so it needs no mesh of its own.
-export const RICK_MODEL = new RiggedAsset("/models/rick.glb?v=m2m", 1.95); // ?v busts any cached UE4 build
-export const RICK_SHOOT = new RiggedAsset("/models/rick_shoot.glb", 1.95);
+// Rigged model pack for the Rick & Morty level. Rick is a clean UE4-skeleton mesh with REAL Mixamo
+// animations authored for that exact mesh (no retargeting): rick.glb = mesh + Idle; walk/run/gun are
+// tiny animation-only clips that bind onto it by bone name. "hand_r" = right hand (holds the gun).
+export const RICK_MODEL = new RiggedAsset("/models/rick.glb?v=mixamo", 1.95); // mesh + Idle clip
+export const RICK_WALK = new RiggedAsset("/models/rick_walk.glb?v=mixamo", 1.95);
+export const RICK_RUN = new RiggedAsset("/models/rick_run.glb?v=mixamo", 1.95);
+export const RICK_GUN = new RiggedAsset("/models/rick_gun.glb?v=mixamo", 1.95);
 export const MEESEEKS_MODEL = new RiggedAsset("/models/meeseeks.glb", 2.0);
 export const RM_HAND_BONE = "hand_r";
 
-// individual preload promises so the loading bar advances per-file instead of stalling on one big job
-export function rickMortyJobs() { return [RICK_MODEL.preload(), RICK_SHOOT.preload(), MEESEEKS_MODEL.preload(), preloadGunModels()]; }
+export function rickMortyJobs() { return [RICK_MODEL.preload(), RICK_WALK.preload(), RICK_RUN.preload(), RICK_GUN.preload(), MEESEEKS_MODEL.preload(), preloadGunModels()]; }
 
 // pull extra animation clips off an already-preloaded RiggedAsset (same skeleton → they retarget by bone name)
 export function clipsOf(asset) { return (asset._asset && asset._asset.animations) || []; }
