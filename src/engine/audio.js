@@ -281,6 +281,14 @@ export class Audio {
     if (!this._whoosh) return; const list = this._whoosh; this._whoosh = null;
     for (const w of list) { try { w.g.gain.setTargetAtTime(0, this.ctx.currentTime, 0.06); } catch { /* gone */ } setTimeout(() => { try { w.src.stop(); } catch { /* stopped */ } }, 180); }
   }
+  poof(scale = 1) { // Meeseeks death "poof" — airy puff that deepens/lengthens with the Meeseeks' size
+    const sz = Math.max(0.6, Math.min(3.2, Math.sqrt(Math.max(0.4, scale)))); // 1=normal, ~2.8=huge, ~4.8→cap giant
+    if (this.playBuf && this.playBuf("poof", Math.min(0.95, 0.4 * sz), 1 / sz)) return;
+    if (!this.ctx) return;
+    this._noiseBurst(0.3 * sz, 1700 / sz, 0.7, 0.34, "lowpass"); // the airy "phwoomp"
+    this._noiseBurst(0.55 * sz, 700 / sz, 0.5, 0.22, "lowpass"); // low body/tail
+    this._tone(230 / sz, 0.3 * sz, "sine", 0.24, 70 / sz);       // soft descending whoomph
+  }
   creature() { // real dinosaur growl (formant-synth fallback below)
     if (this.playBuf("dino_roar", 0.65, 0.92 + Math.random() * 0.14)) return;
     if (!this.ctx) return;

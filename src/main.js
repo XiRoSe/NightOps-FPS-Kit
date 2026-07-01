@@ -45,6 +45,21 @@ const VICTORY_CRAWL = [
   "Peace returns to the galaxy, and a fragile dawn breaks over a world made whole again...",
 ];
 
+// Rick & Morty level — the opening crawl (Rick's voice, during the drop)
+const RICK_INTRO_CRAWL = [
+  "Okay, okay — fun story: I <b>*burp*</b> broke time. Again. Relax, I've done this like nine times, it's basically a hobby at this point.",
+  "Turns out the entire timeline was held together by twelve dumb little <b>WHITE MAGIC RINGS</b>, and now they're scattered all over this busted-up island. Who engineers reality like that? Amateurs.",
+  "Also I <i>may</i> have leaned on the 'infinite Meeseeks' button, so the whole rock is crawling with the blue idiots. So, yeah — existence is kind of your problem now.",
+  "Grab all <b>twelve rings</b>, glue causality back together, and we're home before dinner. Easy. Probably. Let's get schwifty, baby.",
+];
+// ...and the closing crawl after all twelve rings are recovered (Rick's voice, epic)
+const RICK_VICTORY_CRAWL = [
+  "That's twelve. <b>Twelve rings.</b> Time's stitched back together, reality stopped leaking out the edges, and the universe did NOT collapse into a screaming void. You're welcome. Everyone. Everywhere. Ever.",
+  "See, Morty? Told you it was fixable. Nobody believes the smartest man in the multiverse until the sky literally stops falling apart around them.",
+  "The Meeseeks poofed, the dead clock is ticking forward again, and somewhere an infinite number of other Ricks are taking the credit. Rude. This one did it.",
+  "Now let's bail before the cosmos finds something <i>else</i> to pin on me. <b>Wubba lubba dub dub.</b>",
+];
+
 class Game {
   constructor() {
     // pick the level (?level=<id>) and merge its overrides onto the base config
@@ -249,12 +264,14 @@ class Game {
     this.intro = style === "droppod"
       ? new DropPodIntro(this.scene, this.camera, sp, groundY, this.hero, this.vfx, this.audio,
         () => { this.hud._shake = Math.max(this.hud._shake || 0, 28); this.audio.stopDropWhoosh?.(); }, // impact: shake + cut the falling whoosh
-        () => { this.voice.deploy(); this.audio.stopLobbyMusic?.(); this.audio.startBattleMusic?.(); this.hud.showCrawl("ARCFALL", [ // rock kicks in + the Star-Wars story crawl during the fall
-          "An unexpected <b>anomaly</b> has shattered <b>TIME</b> itself.",
-          "The twelve <b>ARCS</b> that anchor the timeline now lie scattered across a broken island — torn loose from their own eras.",
-          "Beasts, war-machines and lost soldiers from every age are stranded here, and they guard the fragments.",
-          "Recover all twelve Arcs to <b>repair time</b> — and return to your own.",
-        ], 21000); }, // 1.5x slower scroll — readable
+        () => { this.voice.deploy(); this.audio.stopLobbyMusic?.(); this.audio.startBattleMusic?.(); this.hud.showCrawl(
+          this._thirdPerson ? "MEESEEKS MAYHEM" : "ARCFALL",
+          this._thirdPerson ? RICK_INTRO_CRAWL : [ // Rick level gets Rick's own broke-time-again crawl
+            "An unexpected <b>anomaly</b> has shattered <b>TIME</b> itself.",
+            "The twelve <b>ARCS</b> that anchor the timeline now lie scattered across a broken island — torn loose from their own eras.",
+            "Beasts, war-machines and lost soldiers from every age are stranded here, and they guard the fragments.",
+            "Recover all twelve Arcs to <b>repair time</b> — and return to your own.",
+          ], 21000); }, // 1.5x slower scroll — readable
         () => { this.hud.hideCrawl(); this.audio.stopBattleMusic?.(); this.audio.dropWhoosh?.(); }) // crawl ends → music cuts, the capsule PLUMMETS with a huge whoosh
       : style === "parachute"
         ? new ParachuteIntro(this.scene, this.camera, sp, groundY, this.hero)
@@ -348,7 +365,7 @@ class Game {
       cam.position.y += dt * 10; cam.rotation.y += dt * 0.18; cam.updateMatrixWorld(true);
       if (this._winT >= 3.2) {
         this._winPhase = "crawl"; this._winT = 0;
-        this.hud.showEndCrawl("A NEW DAWN", VICTORY_CRAWL, () => this.hud.showEndButton());
+        this.hud.showEndCrawl(this._thirdPerson ? "TIME, UN-BROKEN" : "A NEW DAWN", this._thirdPerson ? RICK_VICTORY_CRAWL : VICTORY_CRAWL, () => this.hud.showEndButton());
       }
     }
     // "crawl" phase: the CSS-animated starfield crawl runs itself; the Redeploy button appears via the onDone callback
@@ -536,10 +553,10 @@ class Game {
       let end = start.clone().addScaledVector(dir, 140);
       if (g.pierce) {
         const r = this._rayShot(dir, 200, true);
-        if (r && r.list) { for (const hit of r.list) { hit.enemy.takeDamage(this._falloff(g.dmg, hit.dist)); this.vfx.hitPuff(hit.point); } if (r.point) end = r.point.clone(); }
+        if (r && r.list) { for (const hit of r.list) { hit.enemy.takeDamage(this._falloff(g.dmg, hit.dist)); this.vfx.hitPuff(hit.point); this.combat.hooks.onHitmarker?.(hit.enemy.dead); } if (r.point) end = r.point.clone(); }
       } else {
         const r = this._rayShot(dir, 200);
-        if (r) { end = r.point.clone(); if (r.enemy) { r.enemy.takeDamage(this._falloff(g.dmg, r.dist)); this.vfx.hitPuff(end); } }
+        if (r) { end = r.point.clone(); if (r.enemy) { r.enemy.takeDamage(this._falloff(g.dmg, r.dist)); this.vfx.hitPuff(end); this.combat.hooks.onHitmarker?.(r.enemy.dead); } } // hit confirmation (marker + sound) — was missing on Rick's energy guns
       }
       if (g.pierce) { this.vfx.enemyLaser ? this.vfx.enemyLaser(start, end, g.beam) : this.vfx.tracer(start, end); this.vfx._flash && this.vfx._flash(end, 1.4, g.beam); this.vfx._flash && this.vfx._flash(start, 1.0, g.beam); } // railgun: a bold blue beam + flashes
       else if (p === 0 || g.pellets <= 3) { if (this.weapon._energyBeam) this.vfx.laserBeam(this.weapon.muzzleWorld.clone(), end, g.ecolor || 0x66ff44); else this.vfx.tracer(start, end); } // beam leaves the gun muzzle, not the camera
@@ -621,7 +638,8 @@ class Game {
     const spec = { ...s.tribe[Math.floor(Math.random() * s.tribe.length)] };
     if (this.cfg.reinforce === "meeseeks") { // Rick level: drops are Meeseeks — mostly regular, some huge, mixed weapons
       delete spec.hp; delete spec.speed; spec.kind = "meeseeks";
-      if (Math.random() < 0.15) spec.huge = true;
+      const roll = Math.random();
+      if (roll < 0.04) spec.giant = true; else if (roll < 0.19) spec.huge = true; // ~4% rare GIANT (3x huge), ~15% huge
       spec.weapon = Math.random() < 0.3 ? "rocket" : "gun"; // every Meeseeks armed (gun or rocket, no melee)
     }
     const a = Math.random() * 6.28, r = Math.random() * 26;
@@ -635,7 +653,7 @@ class Game {
     const nose = new THREE.Mesh(new THREE.ConeGeometry(1.05, 1.4, 8), new THREE.MeshStandardMaterial({ color: 0x32363c, metalness: 0.6 })); nose.rotation.x = Math.PI; pod.add(nose);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(1.22, 0.1, 8, 16), glow); ring.rotation.x = Math.PI / 2; ring.position.y = 0.65; pod.add(ring);
     // pod sized to its occupant — giant mechs ride big pods, drones tiny ones
-    const podScale = spec.kind === "robot" ? 2.2 : (spec.kind === "heavy" || spec.kind === "trex") ? 1.5 : spec.kind === "drone" ? 0.8 : 1.0;
+    const podScale = spec.giant ? 7 : spec.huge ? 3 : spec.kind === "robot" ? 2.2 : (spec.kind === "heavy" || spec.kind === "trex") ? 1.5 : spec.kind === "drone" ? 0.8 : 1.0;
     pod.scale.setScalar(podScale);
     pod.position.set(spec.x, 230, spec.z); this.scene.add(pod);
     (this._reinf || (this._reinf = [])).push({ pod, spec, gy, vy: 0, podScale });
@@ -672,6 +690,12 @@ class Game {
       if (p.detonateOnHit && this.heli && !this.heli.dead) {
         const dx = this.heli.pos.x - p.pos.x, dy = (this.heli.pos.y || 0) - p.pos.y, dz = this.heli.pos.z - p.pos.z;
         if (dx * dx + dy * dy + dz * dz < 36) { p.done = true; p._heliHit = this.heli; } // ~6m
+      }
+      // enemy rockets detonate on contact with RICK's body (they had no player collision → sailed straight through him)
+      if (p.detonateOnHit && p.enemyRocket && !p.done) {
+        const pp = this._thirdPerson ? this.controller.headPos : this.camera.position;
+        const dx = pp.x - p.pos.x, dy = (pp.y - 0.7) - p.pos.y, dz = pp.z - p.pos.z; // aim at the chest, ~1.7m body radius
+        if (dx * dx + dy * dy + dz * dz < 1.7 * 1.7) p.done = true;
       }
       // ...and on contact with any enemy (rockets/plasma sailed straight through them before)
       if (p.detonateOnHit && !p.done) {

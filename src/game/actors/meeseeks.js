@@ -10,16 +10,17 @@ import { makeGunModel } from "./gunmodels.js";
 export class Meeseeks {
   constructor(scene, spawn, level) {
     this.scene = scene; this.level = level; this.kind = "meeseeks";
-    this.huge = !!spawn.huge;
+    this.giant = !!spawn.giant;                                   // rare colossus — 3x the huge size
+    this.huge = !!spawn.huge || this.giant;                        // giants inherit all the "huge" behaviour
     this.weapon = spawn.weapon === "melee" ? "gun" : (spawn.weapon || "gun"); // every Meeseeks is armed (no melee)
     this.pos = new THREE.Vector3(spawn.x, 0, spawn.z);
-    this.hp = spawn.hp || (this.huge ? 510 : 135); // 3x tankier — Meeseeks take longer to put down
-    this.speed = spawn.speed || (this.huge ? 4.2 + Math.random() : 6.5 + Math.random() * 1.5);
+    this.hp = spawn.hp || (this.giant ? 1650 : this.huge ? 510 : 135); // giants are colossally tanky
+    this.speed = spawn.speed || (this.giant ? 3.4 + Math.random() : this.huge ? 4.2 + Math.random() : 6.5 + Math.random() * 1.5);
     this.reach = this.weapon === "rocket" ? 22 : this.weapon === "gun" ? 14 : (this.huge ? 3.4 : 2.2);
     this.dead = false; this.counted = false; this.removable = false;
-    this.aggro = false; this.aggroRange = spawn.aggro || (this.huge ? 46 : 34);
+    this.aggro = false; this.aggroRange = spawn.aggro || (this.giant ? 60 : this.huge ? 46 : 34);
     this.yaw = 0; this._atkCd = Math.random() * 1.5; this._t = Math.random() * 6; this._walkW = 0;
-    this.sc = this.huge ? 7.6 : 1.0; // huge Meeseeks are giant kaiju (2x bigger again)
+    this.sc = this.giant ? 22.8 : this.huge ? 7.6 : 1.0;          // giant = 3x the huge kaiju
 
     this.group = new THREE.Group(); this.group.position.copy(this.pos); scene.add(this.group);
     this._invScale = 1;
@@ -38,7 +39,7 @@ export class Meeseeks {
     if (this.weapon !== "melee") {                              // held weapon: parented to the group (native scale),
       const wk = this.weapon === "rocket" ? "rocket" : "gun";  // real CC0 model when loaded, else procedural
       this._gun = makeGunModel(wk) || makeHeldGun(wk === "gun" ? "rifle" : wk);
-      this._gun.scale.setScalar(this.huge ? 2.4 : 1.0); this.group.add(this._gun); this._tmp = new THREE.Vector3();
+      this._gun.scale.setScalar(this.sc); this.group.add(this._gun); this._tmp = new THREE.Vector3(); // weapon scales with the Meeseeks (huge/giant carry huge/giant guns)
       if (!this._hand) this._gun.position.set(0.42 * this.sc, 1.15 * this.sc, 0.32 * this.sc);
     }
 
@@ -62,12 +63,17 @@ export class Meeseeks {
   takeDamage(dmg) { if (this.dead) return; this.aggro = true; this.hp -= dmg; if (this.hp <= 0) this._die(); }
 
   _die() {
-    this.dead = true; this.hitbox.userData.enemy = null; this.hitbox.visible = false; this._deathT = 0.6;
+    this.dead = true; this.hitbox.userData.enemy = null; this.hitbox.visible = false;
+    this._deathT = 0.5 + this.sc * 0.12;                           // bigger Meeseeks poofs linger longer
+    this._puffAt = this.group.position.clone();                    // keep puffing here after the body vanishes
     if (this._ctx) {
-      const p = this.group.position, n = this.huge ? 18 : 10;
-      for (let i = 0; i < n; i++) this._ctx.vfx?.dustBurst?.(new THREE.Vector3(p.x + (Math.random() - 0.5) * 1.6 * this.sc, p.y + (0.6 + Math.random() * 1.6) * this.sc, p.z + (Math.random() - 0.5) * 1.6 * this.sc));
-      this._ctx.vfx?._flash?.(new THREE.Vector3(p.x, p.y + this.sc, p.z), 1.6 * this.sc, 0x6fd0ff);
-      // no voice on death — a silent blue poof. The Meeseeks voice line plays ONLY when they fall from the sky (see main._dropReinforcement)
+      const p = this.group.position;
+      const n = Math.round((this.huge ? 22 : 12) * (this.giant ? 2.2 : 1)); // more debris the bigger they are
+      for (let i = 0; i < n; i++) this._ctx.vfx?.dustBurst?.(new THREE.Vector3(p.x + (Math.random() - 0.5) * 1.6 * this.sc, p.y + (0.5 + Math.random() * 1.8) * this.sc, p.z + (Math.random() - 0.5) * 1.6 * this.sc));
+      this._ctx.vfx?._flash?.(new THREE.Vector3(p.x, p.y + this.sc, p.z), 1.8 * this.sc, 0x9fe0ff);
+      this._ctx.vfx?._shockwave?.(new THREE.Vector3(p.x, p.y + 0.2, p.z)); // ground shock ring
+      this._ctx.audio?.poof?.(this.sc);                            // cool puff sound, deeper/louder the bigger they are
+      // no voice on death. The Meeseeks voice line plays ONLY when they fall from the sky (see main._dropReinforcement)
     }
     this.group.visible = false; // poof = gone
   }
@@ -76,7 +82,11 @@ export class Meeseeks {
     this._ctx = ctx; this._t += dt;
     if (this.mixer) this.mixer.update(dt);
     const gy = this.level.terrainHeight ? this.level.terrainHeight(this.pos.x, this.pos.z) : 0;
-    if (this.dead) { if ((this._deathT -= dt) <= 0) this.removable = true; return; }
+    if (this.dead) {
+      if (this._puffAt && ctx.vfx?.dustBurst) { const q = this.giant ? 4 : this.huge ? 2 : 1, a = this._puffAt; // lingering poof cloud, size-scaled
+        for (let i = 0; i < q; i++) ctx.vfx.dustBurst(new THREE.Vector3(a.x + (Math.random() - 0.5) * 1.4 * this.sc, a.y + (0.3 + Math.random() * 2.0) * this.sc, a.z + (Math.random() - 0.5) * 1.4 * this.sc)); }
+      if ((this._deathT -= dt) <= 0) this.removable = true; return;
+    }
     const dx = playerPos.x - this.pos.x, dz = playerPos.z - this.pos.z, d = Math.hypot(dx, dz) || 1;
     let moving = false;
     if (!this.aggro) { if (d <= this.aggroRange) this.aggro = true; else { this._anim(gy, false); return; } }
@@ -92,7 +102,7 @@ export class Meeseeks {
       this._atkCd = this.weapon === "rocket" ? (2.4 + Math.random() * 0.9) : (0.8 + Math.random() * 0.5);
       if (!ctx.airborne && !this.level.segmentBlocked(this.pos.x, this.pos.z, playerPos.x, playerPos.z)) {
         const fx = this.pos.x + (dx / d) * 0.9, fz = this.pos.z + (dz / d) * 0.9, my = gy + 1.3 * this.sc;
-        ctx.enemyFire?.({ from: { x: fx, y: my, z: fz }, to: { x: playerPos.x, y: playerPos.y, z: playerPos.z }, kind: this.weapon, dmg: this.weapon === "rocket" ? (this.huge ? 60 : 28) : (this.huge ? 18 : 7) });
+        ctx.enemyFire?.({ from: { x: fx, y: my, z: fz }, to: { x: playerPos.x, y: playerPos.y, z: playerPos.z }, kind: this.weapon, dmg: this.weapon === "rocket" ? (this.giant ? 110 : this.huge ? 60 : 28) : (this.giant ? 34 : this.huge ? 18 : 7) });
       }
     }
     this._anim(gy, moving);

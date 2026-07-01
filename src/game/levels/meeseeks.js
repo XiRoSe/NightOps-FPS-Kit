@@ -18,7 +18,7 @@ export const meeseeks = {
     weaponNames: { rifle: "PHOTON CARBINE", minigun: "TACHYON REPEATER", burst: "ION BURSTER", plasma: "PLASMA CANNON", launcher: "FUSION LAUNCHER" },
     music: "schwifty",                                          // this level's in-game track
     reinforce: "meeseeks",                                      // the sky-drop reinforcements are Meeseeks (mostly regular, some huge)
-    messages: { deployHint: "CLICK TO DEPLOY — recover the arcs, survive the Meeseeks", hostileDown: "MEESEEKS POOFED" },
+    messages: { deployHint: "CLICK TO DEPLOY — grab the 12 white magic rings, poof the Meeseeks, un-break time", hostileDown: "MEESEEKS POOFED" },
   },
 
   build(b) {
