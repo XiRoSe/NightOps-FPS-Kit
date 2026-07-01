@@ -61,7 +61,7 @@ export function makeRick() {
   const thruster = makeThruster();                             // additive particle plume from the two nozzles
   jetpack.add(thruster.points);
 
-  let phase = 0, walkW = 0, jetSway = 0, gunPitch = 0;
+  let phase = 0, walkW = 0, jetSway = 0, gunPitch = 0, runLean = 0;
   const _muzzleV = new THREE.Vector3(), _spineQ = new THREE.Quaternion(), _xAxis = new THREE.Vector3(1, 0, 0);
   return {
     group, setWeapon,
@@ -80,11 +80,12 @@ export function makeRick() {
       if (mixer) {
         mixer.update(dt);
         walkW += ((moving ? 1 : 0) - walkW) * Math.min(1, dt * 10); // crossfade walk in/out by movement
-        if (walk) { walk.setEffectiveWeight(walkW); walk.setEffectiveTimeScale(4 * speed); } // 4x → reads as a run
+        if (walk) { walk.setEffectiveWeight(walkW); walk.setEffectiveTimeScale(speed > 1.5 ? 6.5 : 4); } // 4x jog / 6.5x sprint cadence
         const firing = shoot && shoot.isRunning() && shoot.time < shoot.getClip().duration - 0.02;
         if (shoot) shoot.setEffectiveWeight(firing ? 1 : 0); // release the shoot pose once the shot finishes — clamped weight was corrupting the walk loop
         if (aim) aim.setEffectiveWeight(firing ? 0 : 1 - walkW); // idle → weapon-up ready stance (not hands-down); moving → walk; firing → shoot
-        if (spineBone) { _spineQ.setFromAxisAngle(_xAxis, Math.max(-0.8, Math.min(0.8, aimPitch))); spineBone.quaternion.copy(spineBase).multiply(_spineQ); } // lean the whole upper body (arms + hands + gun) to the aim
+        runLean += (((moving && speed > 1.5) ? 1 : 0) - runLean) * Math.min(1, dt * 8); // ease the sprint forward-lean in/out
+        if (spineBone) { const lean = Math.max(-0.95, Math.min(0.95, Math.max(-0.8, Math.min(0.8, aimPitch)) + runLean * 0.5)); _spineQ.setFromAxisAngle(_xAxis, lean); spineBone.quaternion.copy(spineBase).multiply(_spineQ); } // aim pitch + a runner's forward lean while sprinting
       } else if (legL) { // procedural fallback walk
         phase += dt * (moving ? 8.5 * speed : 2); const sw = Math.sin(phase);
         if (moving) { legL.rotation.x = sw * 0.7; legR.rotation.x = -sw * 0.7; armL.rotation.x = -sw * 0.6; armR.rotation.x = sw * 0.6; }
