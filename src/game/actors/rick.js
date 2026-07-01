@@ -80,10 +80,10 @@ export function makeRick() {
       if (mixer) {
         mixer.update(dt);
         walkW += ((moving ? 1 : 0) - walkW) * Math.min(1, dt * 10); // crossfade walk in/out by movement
-        if (walk) { walk.setEffectiveWeight(walkW); walk.setEffectiveTimeScale(speed > 1.5 ? 6.5 : 4); } // 4x jog / 6.5x sprint cadence
+        if (walk) { walk.setEffectiveWeight(walkW); walk.setEffectiveTimeScale(4 * speed); } // cadence matches ground speed (no foot-slide); the forward lean sells the run
         const firing = shoot && shoot.isRunning() && shoot.time < shoot.getClip().duration - 0.02;
         if (shoot) shoot.setEffectiveWeight(firing ? 1 : 0); // release the shoot pose once the shot finishes — clamped weight was corrupting the walk loop
-        if (aim) aim.setEffectiveWeight(firing ? 0 : 1 - walkW); // idle → weapon-up ready stance (not hands-down); moving → walk; firing → shoot
+        if (aim) aim.setEffectiveWeight(firing ? 0 : Math.max(0.4, 1 - walkW)); // keep a gun-hold floor even while moving so the arms/gun stay steady (less flail)
         runLean += (((moving && speed > 1.5) ? 1 : 0) - runLean) * Math.min(1, dt * 8); // ease the sprint forward-lean in/out
         if (spineBone) { const lean = Math.max(-0.95, Math.min(0.95, Math.max(-0.8, Math.min(0.8, aimPitch)) + runLean * 0.5)); _spineQ.setFromAxisAngle(_xAxis, lean); spineBone.quaternion.copy(spineBase).multiply(_spineQ); } // aim pitch + a runner's forward lean while sprinting
       } else if (legL) { // procedural fallback walk
