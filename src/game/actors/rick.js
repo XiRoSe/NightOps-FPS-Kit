@@ -10,9 +10,10 @@ export function makeRick() {
   const group = new THREE.Group();
   let mixer = null, walk = null, shoot = null, aim = null, hand = null, spineBone = null, spineBase = null, glb = false;
   let legL, legR, armL, armR; // procedural fallback handles
+  const swing = []; // {bone, restQuat} for arm/leg swing amplification
 
   if (RICK_MODEL.ready) {
-    const inst = RICK_MODEL.make({ rightHand: RM_HAND_BONE, spine: "spine_02" });
+    const inst = RICK_MODEL.make({ rightHand: RM_HAND_BONE, spine: "spine_02", ua_l: "upperarm_l", ua_r: "upperarm_r", th_l: "thigh_l", th_r: "thigh_r" });
     group.add(inst.model);
     mixer = new THREE.AnimationMixer(inst.model);
     for (const c of inst.animations) if (/walk/i.test(c.name)) walk = mixer.clipAction(c);
@@ -24,6 +25,7 @@ export function makeRick() {
     }
     hand = inst.bones.rightHand;
     spineBone = inst.bones.spine; if (spineBone) spineBase = spineBone.quaternion.clone(); // rest pose, for aim-pitch lean
+    for (const [k, leg] of [["ua_l", 0], ["ua_r", 0], ["th_l", 1], ["th_r", 1]]) { const b = inst.bones[k]; if (b) swing.push({ b, base: b.quaternion.clone(), leg }); } // arm/leg bones to exaggerate the run swing
     if (walk) { walk.play(); walk.setEffectiveWeight(0); }
     glb = true;
   } else {
@@ -62,7 +64,7 @@ export function makeRick() {
   jetpack.add(thruster.points);
 
   let phase = 0, walkW = 0, jetSway = 0, gunPitch = 0, runLean = 0;
-  const _muzzleV = new THREE.Vector3(), _spineQ = new THREE.Quaternion(), _xAxis = new THREE.Vector3(1, 0, 0);
+  const _muzzleV = new THREE.Vector3(), _spineQ = new THREE.Quaternion(), _xAxis = new THREE.Vector3(1, 0, 0), _swQ = new THREE.Quaternion();
   return {
     group, setWeapon,
     getMuzzle() { if (!gun) return null; gun.updateWorldMatrix(true, false); return gun.localToWorld(_muzzleV.set(0, 0, 0.7)); }, // barrel tip in world space
@@ -83,9 +85,10 @@ export function makeRick() {
         if (walk) { walk.setEffectiveWeight(walkW); walk.setEffectiveTimeScale(4 * speed); } // cadence matches ground speed (no foot-slide); the forward lean sells the run
         const firing = shoot && shoot.isRunning() && shoot.time < shoot.getClip().duration - 0.02;
         if (shoot) shoot.setEffectiveWeight(firing ? 1 : 0); // release the shoot pose once the shot finishes — clamped weight was corrupting the walk loop
-        if (aim) aim.setEffectiveWeight(firing ? 0 : Math.max(0.4, 1 - walkW)); // keep a gun-hold floor even while moving so the arms/gun stay steady (less flail)
+        if (aim) aim.setEffectiveWeight(firing ? 0 : 1 - walkW); // idle → gun-up ready stance; moving → full walk (arms swing); firing → shoot
         runLean += (((moving && speed > 1.5) ? 1 : 0) - runLean) * Math.min(1, dt * 8); // ease the sprint forward-lean in/out
         if (spineBone) { const lean = Math.max(-0.95, Math.min(0.95, Math.max(-0.8, Math.min(0.8, aimPitch)) + runLean * 0.5)); _spineQ.setFromAxisAngle(_xAxis, lean); spineBone.quaternion.copy(spineBase).multiply(_spineQ); } // aim pitch + a runner's forward lean while sprinting
+        if (swing.length && moving) { const run = speed > 1.5; for (const s of swing) { const amp = s.leg ? (run ? 1.35 : 1.2) : (run ? 1.85 : 1.4); _swQ.copy(s.b.quaternion); s.b.quaternion.copy(s.base).slerp(_swQ, amp); } } // wider arm swing + a bit more leg stride when running (legs gentler to avoid foot-slide)
       } else if (legL) { // procedural fallback walk
         phase += dt * (moving ? 8.5 * speed : 2); const sw = Math.sin(phase);
         if (moving) { legL.rotation.x = sw * 0.7; legR.rotation.x = -sw * 0.7; armL.rotation.x = -sw * 0.6; armR.rotation.x = sw * 0.6; }
