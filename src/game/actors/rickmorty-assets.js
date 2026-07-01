@@ -5,9 +5,9 @@ import { preloadGunModels } from "./gunmodels.js";
 // professional skinning); its animations live in separate mesh-stripped files and retarget on by bone name:
 //   Rick:     rick.glb (mesh + UE4 skeleton, no clips) + rick_walk.glb (Walk_Loop) + rick_shoot.glb (Pistol_Shoot)
 //   Meeseeks: meeseeks.glb (Walk_Loop)
-export const RICK_MODEL = new RiggedAsset("/models/rick.glb", 1.95);
-export const RICK_WALK = new RiggedAsset("/models/rick_walk.glb", 1.95);
-export const RICK_SHOOT = new RiggedAsset("/models/rick_shoot.glb", 1.95);
+export const RICK_MODEL = new RiggedAsset("/models/rick.glb?v=ue4", 1.95); // ?v busts the 1-day CDN cache on the new mesh
+export const RICK_WALK = new RiggedAsset("/models/rick_walk.glb?v=ue4", 1.95);
+export const RICK_SHOOT = new RiggedAsset("/models/rick_shoot.glb?v=ue4", 1.95);
 export const MEESEEKS_MODEL = new RiggedAsset("/models/meeseeks.glb", 2.0);
 export const RM_HAND_BONE = "hand_r";
 
